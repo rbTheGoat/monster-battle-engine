@@ -28,6 +28,7 @@ struct Move{
     Type type;   // attack effectiveness should come from the move's type, not the pokemon's type
     Status statusEffect;
     int statusChance; //chance to apply the status 
+    int statusDuration
 };
 
 class Pokemon{

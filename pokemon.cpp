@@ -77,7 +77,7 @@ void Pokemon::attack(Pokemon& enemy, Move move) {
         int statusRoll = rand() % 100 + 1;
 
         if (statusRoll <= move.statusChance) {
-            enemy.setStatus(move.statusEffect, 3);
+            enemy.setStatus(move.statusEffect, move.statusDuration);
 
             std::cout << enemy.getName()
                       << " is now "
