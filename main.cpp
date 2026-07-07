@@ -5,6 +5,20 @@
 #include "pokemon.h"
 #include "pokemonDatabase.h"
 
+struct BattleStats {
+    int playerDirectDamage = 0;
+    int enemyDirectDamage = 0;
+
+    int statusDamageToPlayer = 0;
+    int statusDamageToEnemy = 0;
+
+    int playerStatusesApplied = 0;
+    int enemyStatusesApplied = 0;
+
+    int playerTurnsSkipped = 0;
+    int enemyTurnsSkipped = 0;
+};
+
 int getValidInput(int min, int max) {
     int choice;
 
@@ -54,7 +68,7 @@ void showPokemonMenu() {
 }
 
 void showMainMenu() {
-    std::cout << "\n_________ Monster Battle Engine _________\n";
+    std::cout << "\n========= Monster Battle Engine =========\n";
     std::cout << "1. Start Battle\n";
     std::cout << "2. Instructions\n";
     std::cout << "3. Exit\n";
@@ -62,7 +76,7 @@ void showMainMenu() {
 }
 
 void showInstructions() {
-    std::cout << "\n_________ Instructions _________\n";
+    std::cout << "\n========= Instructions =========\n";
     std::cout << "1. Choose your Pokemon.\n";
     std::cout << "2. The enemy Pokemon is selected randomly.\n";
     std::cout << "3. Each Pokemon has multiple moves.\n";
@@ -74,7 +88,51 @@ void showInstructions() {
     std::cout << "9. Battle continues until one Pokemon faints.\n";
 }
 
+void showBattleSummary(
+    Pokemon& playerPokemon,
+    Pokemon& enemyPokemon,
+    BattleStats stats,
+    bool playerWon,
+    int round
+) {
+    std::cout << "\n========= Battle Summary =========\n";
+
+    if (playerWon) {
+        std::cout << "Winner: " << playerPokemon.getName() << "\n";
+    } else {
+        std::cout << "Winner: " << enemyPokemon.getName() << "\n";
+    }
+
+    std::cout << "Rounds fought: " << round << "\n\n";
+
+    std::cout << "Your Pokemon: " << playerPokemon.getName()
+              << " | HP remaining: " << playerPokemon.getHp() << "\n";
+
+    std::cout << "Enemy Pokemon: " << enemyPokemon.getName()
+              << " | HP remaining: " << enemyPokemon.getHp() << "\n\n";
+
+    std::cout << "--- Damage Stats ---\n";
+    std::cout << "Player direct damage dealt: " << stats.playerDirectDamage << "\n";
+    std::cout << "Enemy direct damage dealt: " << stats.enemyDirectDamage << "\n";
+    std::cout << "Status damage taken by player: " << stats.statusDamageToPlayer << "\n";
+    std::cout << "Status damage taken by enemy: " << stats.statusDamageToEnemy << "\n\n";
+
+    std::cout << "--- Status Stats ---\n";
+    std::cout << "Statuses applied by player: " << stats.playerStatusesApplied << "\n";
+    std::cout << "Statuses applied by enemy: " << stats.enemyStatusesApplied << "\n";
+    std::cout << "Player turns skipped by status: " << stats.playerTurnsSkipped << "\n";
+    std::cout << "Enemy turns skipped by status: " << stats.enemyTurnsSkipped << "\n";
+
+    if (playerWon) {
+        std::cout << "\nYou won in " << round << " rounds!\n";
+    } else {
+        std::cout << "\nYou lost in " << round << " rounds!\n";
+    }
+}
+
 void startBattle() {
+    BattleStats stats;
+
     std::cout << "\nChoose your Pokemon:\n";
     showPokemonMenu();
 
@@ -107,8 +165,25 @@ void startBattle() {
         int playerMoveChoice = getValidInput(1, playerPokemon.getMoveCount());
         Move playerMove = playerPokemon.getMove(playerMoveChoice - 1);
 
-        if (playerPokemon.canAttack()) {
+        bool playerCanMove = playerPokemon.canAttack();
+
+        if (playerCanMove) {
+            int enemyHpBefore = enemyPokemon.getHp();
+            Status enemyStatusBefore = enemyPokemon.getStatus();
+
             playerPokemon.attack(enemyPokemon, playerMove);
+
+            int damageDealt = enemyHpBefore - enemyPokemon.getHp();
+
+            if (damageDealt > 0) {
+                stats.playerDirectDamage += damageDealt;
+            }
+
+            if (enemyStatusBefore == Status::None && enemyPokemon.getStatus() != Status::None) {
+                stats.playerStatusesApplied++;
+            }
+        } else {
+            stats.playerTurnsSkipped++;
         }
 
         if (enemyPokemon.isFainted()) {
@@ -122,8 +197,25 @@ void startBattle() {
 
             Move enemyMove = enemyPokemon.chooseBestMove(playerPokemon);
 
-            if (enemyPokemon.canAttack()) {
+            bool enemyCanMove = enemyPokemon.canAttack();
+
+            if (enemyCanMove) {
+                int playerHpBefore = playerPokemon.getHp();
+                Status playerStatusBefore = playerPokemon.getStatus();
+
                 enemyPokemon.attack(playerPokemon, enemyMove);
+
+                int damageDealt = playerHpBefore - playerPokemon.getHp();
+
+                if (damageDealt > 0) {
+                    stats.enemyDirectDamage += damageDealt;
+                }
+
+                if (playerStatusBefore == Status::None && playerPokemon.getStatus() != Status::None) {
+                    stats.enemyStatusesApplied++;
+                }
+            } else {
+                stats.enemyTurnsSkipped++;
             }
 
             if (playerPokemon.isFainted()) {
@@ -136,8 +228,22 @@ void startBattle() {
         if (running) {
             std::cout << "\n--- End of Round Effects ---\n";
 
+            int playerHpBeforeStatus = playerPokemon.getHp();
+            int enemyHpBeforeStatus = enemyPokemon.getHp();
+
             playerPokemon.applyStatusEffect();
             enemyPokemon.applyStatusEffect();
+
+            int playerStatusDamage = playerHpBeforeStatus - playerPokemon.getHp();
+            int enemyStatusDamage = enemyHpBeforeStatus - enemyPokemon.getHp();
+
+            if (playerStatusDamage > 0) {
+                stats.statusDamageToPlayer += playerStatusDamage;
+            }
+
+            if (enemyStatusDamage > 0) {
+                stats.statusDamageToEnemy += enemyStatusDamage;
+            }
 
             if (playerPokemon.isFainted()) {
                 playerWon = false;
@@ -160,18 +266,7 @@ void startBattle() {
         }
     }
 
-    std::cout << "\n_________ Battle Over _________\n";
-    std::cout << "Rounds fought: " << round << "\n";
-    std::cout << "Your Pokemon: " << playerPokemon.getName()
-              << " | HP remaining: " << playerPokemon.getHp() << "\n";
-    std::cout << "Enemy Pokemon: " << enemyPokemon.getName()
-              << " | HP remaining: " << enemyPokemon.getHp() << "\n";
-
-    if (playerWon) {
-        std::cout << "\nYou won in " << round << " rounds!\n";
-    } else {
-        std::cout << "\nYou lost in " << round << " rounds!\n";
-    }
+    showBattleSummary(playerPokemon, enemyPokemon, stats, playerWon, round);
 }
 
 int main() {
