@@ -28,7 +28,7 @@ struct Move{
     Type type;   // attack effectiveness should come from the move's type, not the pokemon's type
     Status statusEffect;
     int statusChance; //chance to apply the status 
-    int statusDuration
+    int statusDuration;
 };
 
 class Pokemon{
@@ -59,4 +59,5 @@ class Pokemon{
     void applyStatusEffect();
     std::string getStatusName();
     Move chooseBestMove(Pokemon& enemy);
+    bool canAttack();
 };

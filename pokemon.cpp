@@ -1,7 +1,6 @@
 #include "pokemon.h"
 #include <iostream>
 #include <cstdlib>
-#include <ctime>
 
 Pokemon::Pokemon(std::string pokemonName, int pokemonHp, Type pokemonType) {
     name = pokemonName;
@@ -67,11 +66,20 @@ void Pokemon::attack(Pokemon& enemy, Move move) {
     float multiplier = getTypeMultiplier(move.type, enemy.getType());
     actualDamage = actualDamage * multiplier;
 
-    if (multiplier == 2.0f) std::cout << "It's super effective!\n";
-    if (multiplier == 0.5f) std::cout << "It's not very effective...\n";
+    if (multiplier == 2.0f) {
+        std::cout << "It's super effective!\n";
+    }
+
+    if (multiplier == 0.5f) {
+        std::cout << "It's not very effective...\n";
+    }
 
     enemy.takeDamage(actualDamage);
     std::cout << "It dealt " << actualDamage << " damage!\n";
+
+    if (enemy.isFainted()) {
+        return;
+    }
 
     if (move.statusEffect != Status::None && enemy.getStatus() == Status::None) {
         int statusRoll = rand() % 100 + 1;
@@ -82,7 +90,9 @@ void Pokemon::attack(Pokemon& enemy, Move move) {
             std::cout << enemy.getName()
                       << " is now "
                       << enemy.getStatusName()
-                      << " for 3 turns!\n";
+                      << " for "
+                      << move.statusDuration
+                      << " turns!\n";
         }
     }
 }
@@ -126,29 +136,56 @@ int Pokemon::getHp() {
 }
 
 Move Pokemon::chooseBestMove(Pokemon& enemy) {
-    int enemyHp = enemy.getHp();
-    Move strongestMove = moves[0];
-    Move weakestKillingMove = moves[0];
-    bool foundKillingMove = false;
+    int bestMoveIndex = 0;
+    int secondBestMoveIndex = 0;
+
+    float bestScore = -1.0f;
+    float secondBestScore = -1.0f;
 
     for (int i = 0; i < moves.size(); i++) {
-        if (moves[i].damage > strongestMove.damage) {
-            strongestMove = moves[i];
+
+        float multiplier = getTypeMultiplier(moves[i].type, enemy.getType());
+        float accuracyFactor = moves[i].accuracy / 100.0f;
+
+        // Main AI score: damage adjusted by type effectiveness and accuracy
+        float score = moves[i].damage * multiplier * accuracyFactor;
+
+        // Bonus if the move can apply status and enemy currently has no status
+        if (moves[i].statusEffect != Status::None && enemy.getStatus() == Status::None) {
+            score += moves[i].statusChance * 0.2f;
         }
 
-        if (moves[i].damage >= enemyHp) {
-            if (!foundKillingMove || moves[i].damage < weakestKillingMove.damage) {
-                weakestKillingMove = moves[i];
-                foundKillingMove = true;
-            }
+        // Big bonus if this move can knock out the enemy
+        float estimatedDamage = moves[i].damage * multiplier;
+
+        if (estimatedDamage >= enemy.getHp()) {
+            score += 1000.0f;
+        }
+
+        // Track best and second-best moves
+        if (score > bestScore) {
+            secondBestScore = bestScore;
+            secondBestMoveIndex = bestMoveIndex;
+
+            bestScore = score;
+            bestMoveIndex = i;
+        }
+        else if (score > secondBestScore) {
+            secondBestScore = score;
+            secondBestMoveIndex = i;
         }
     }
 
-    if (foundKillingMove) {
-        return weakestKillingMove;
+    // Controlled randomness:
+    // 80% chance: best move
+    // 20% chance: second-best move
+    int aiRoll = rand() % 100 + 1;
+
+    if (aiRoll <= 80 || moves.size() == 1) {
+        return moves[bestMoveIndex];
     }
 
-    return strongestMove;
+    return moves[secondBestMoveIndex];
 }
 
 bool Pokemon::isFainted() {
@@ -196,4 +233,22 @@ void Pokemon::applyStatusEffect() {
         status = Status::None;
         statusTurnsRemaining = 0;
     }
+}
+
+bool Pokemon::canAttack() {
+    if (status == Status::Sleep) {
+        std::cout << name << " is asleep and cannot move!\n";
+        return false;
+    }
+
+    if (status == Status::Paralysis) {
+        int paralysisRoll = rand() % 100 + 1;
+
+        if (paralysisRoll <= 25) {
+            std::cout << name << " is paralyzed and cannot move!\n";
+            return false;
+        }
+    }
+
+    return true;
 }
