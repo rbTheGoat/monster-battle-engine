@@ -74,7 +74,7 @@ int main() {
         std::cout << "\nChoose " << playerPokemon.getName() << "'s move:\n";
         playerPokemon.showMoves();
 
-        int playerMoveChoice = getValidInput(1, 3);
+        int playerMoveChoice = getValidInput(1, playerPokemon.getMoveCount()); // changed
         
         Move playerMove = playerPokemon.getMove(playerMoveChoice - 1);
 

@@ -18,9 +18,10 @@ Pokemon getCharmander() {
 
 Pokemon getBulbasaur() {
     Pokemon bulbasaur("Bulbasaur", 110, Type::Grass);
-    bulbasaur.addMove({"Vine Whip", 25, 100, Type::Grass, Status::None, 0, 0});
-    bulbasaur.addMove({"Razor Leaf", 35, 90, Type::Grass, Status::None, 0, 0});
-    bulbasaur.addMove({"Tackle", 15, 100, Type::Normal, Status::None, 0, 0});
+    bulbasaur.addMove({"Vine Whip",    25, 100, Type::Grass, Status::None,  0,   0});
+    bulbasaur.addMove({"Razor Leaf",   35,  90, Type::Grass, Status::None,  0,   0});
+    bulbasaur.addMove({"Tackle",       15, 100, Type::Normal, Status::None, 0,   0});
+    bulbasaur.addMove({"Sleep Powder",  0,  75, Type::Grass, Status::Sleep, 100, 2});
     return bulbasaur;
 }
 
@@ -42,9 +43,10 @@ Pokemon getEevee() {
 
 Pokemon getGengar() {
     Pokemon gengar("Gengar", 90, Type::Ghost);
-    gengar.addMove({"Shadow Ball", 40, 90, Type::Ghost, Status::None, 0, 0});
-    gengar.addMove({"Lick", 20, 100, Type::Ghost, Status::Paralysis, 20, 2});
-    gengar.addMove({"Dark Pulse", 35, 95, Type::Normal, Status::None, 0, 0});
+    gengar.addMove({"Shadow Ball", 40,  90, Type::Ghost,  Status::None,     0, 0});
+    gengar.addMove({"Lick",        20, 100, Type::Ghost,  Status::Paralysis, 20, 2});
+    gengar.addMove({"Dark Pulse",  35,  95, Type::Normal, Status::None,     0, 0});
+    gengar.addMove({"Poison Gas",   0,  75, Type::Normal, Status::Poison,  100, 4});
     return gengar;
 }
 

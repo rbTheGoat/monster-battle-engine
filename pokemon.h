@@ -60,4 +60,5 @@ class Pokemon{
     std::string getStatusName();
     Move chooseBestMove(Pokemon& enemy);
     bool canAttack();
+    int getMoveCount();
 };

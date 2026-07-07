@@ -74,8 +74,12 @@ void Pokemon::attack(Pokemon& enemy, Move move) {
         std::cout << "It's not very effective...\n";
     }
 
-    enemy.takeDamage(actualDamage);
-    std::cout << "It dealt " << actualDamage << " damage!\n";
+    if (actualDamage > 0) {
+        enemy.takeDamage(actualDamage);
+        std::cout << "It dealt " << actualDamage << " damage!\n";
+    } else {
+        std::cout << "It did no direct damage!\n";
+    }
 
     if (enemy.isFainted()) {
         return;
@@ -135,6 +139,11 @@ int Pokemon::getHp() {
     return hp;
 }
 
+// added
+int Pokemon::getMoveCount() {
+    return moves.size();
+}
+
 Move Pokemon::chooseBestMove(Pokemon& enemy) {
     int bestMoveIndex = 0;
     int secondBestMoveIndex = 0;
@@ -147,22 +156,18 @@ Move Pokemon::chooseBestMove(Pokemon& enemy) {
         float multiplier = getTypeMultiplier(moves[i].type, enemy.getType());
         float accuracyFactor = moves[i].accuracy / 100.0f;
 
-        // Main AI score: damage adjusted by type effectiveness and accuracy
         float score = moves[i].damage * multiplier * accuracyFactor;
 
-        // Bonus if the move can apply status and enemy currently has no status
         if (moves[i].statusEffect != Status::None && enemy.getStatus() == Status::None) {
             score += moves[i].statusChance * 0.2f;
         }
 
-        // Big bonus if this move can knock out the enemy
         float estimatedDamage = moves[i].damage * multiplier;
 
         if (estimatedDamage >= enemy.getHp()) {
             score += 1000.0f;
         }
 
-        // Track best and second-best moves
         if (score > bestScore) {
             secondBestScore = bestScore;
             secondBestMoveIndex = bestMoveIndex;
@@ -176,9 +181,6 @@ Move Pokemon::chooseBestMove(Pokemon& enemy) {
         }
     }
 
-    // Controlled randomness:
-    // 80% chance: best move
-    // 20% chance: second-best move
     int aiRoll = rand() % 100 + 1;
 
     if (aiRoll <= 80 || moves.size() == 1) {
@@ -202,11 +204,11 @@ void Pokemon::setStatus(Status newStatus, int turns) {
 }
 
 std::string Pokemon::getStatusName() {
-    if (status == Status::None) return "None";
-    if (status == Status::Burn) return "Burn";
-    if (status == Status::Poison) return "Poison";
-    if (status == Status::Sleep) return "Sleep";
-    if (status == Status::Paralysis) return "Paralysis";
+    if (status == Status::None)      return "None";
+    if (status == Status::Burn)      return "Burned";
+    if (status == Status::Poison)    return "Poisoned";
+    if (status == Status::Sleep)     return "Asleep";
+    if (status == Status::Paralysis) return "Paralyzed";
     return "Unknown";
 }
 
