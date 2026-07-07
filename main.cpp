@@ -1,23 +1,48 @@
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
+#include <limits>
 #include "pokemon.h"
 #include "pokemonDatabase.h"
 
-int getValidInput(int min, int max){
+int getValidInput(int min, int max) {
     int choice;
-    while(true){
+
+    while (true) {
         std::cin >> choice;
-        if(choice >= min && choice <= max){
+
+        if (std::cin.fail()) {
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+            std::cout << "Invalid input. Please enter a number between "
+                      << min << " and " << max << ": ";
+            continue;
+        }
+
+        if (choice >= min && choice <= max) {
             return choice;
         }
+
         std::cout << "Invalid choice. Please enter a number between "
                   << min << " and " << max << ": ";
     }
 }
 
-Pokemon getPokemonByChoice(int choice)
-{
+char getYesNoInput() {
+    char choice;
+
+    while (true) {
+        std::cin >> choice;
+
+        if (choice == 'y' || choice == 'Y') return 'y';
+        if (choice == 'n' || choice == 'N') return 'n';
+
+        std::cout << "Invalid input. Please enter y or n: ";
+    }
+}
+
+Pokemon getPokemonByChoice(int choice) {
     if(choice == 1) return getPikachu();
     if(choice == 2) return getCharmander();
     if(choice == 3) return getBulbasaur();
@@ -26,7 +51,6 @@ Pokemon getPokemonByChoice(int choice)
     if(choice == 6) return getGengar();
     if(choice == 7) return getLucario();
     if(choice == 8) return getDragonite();
-
     return getPikachu();
 }
 
@@ -74,16 +98,15 @@ int main() {
         std::cout << "\nChoose " << playerPokemon.getName() << "'s move:\n";
         playerPokemon.showMoves();
 
-        int playerMoveChoice = getValidInput(1, playerPokemon.getMoveCount()); // changed
-        
+        int playerMoveChoice = getValidInput(1, playerPokemon.getMoveCount());
         Move playerMove = playerPokemon.getMove(playerMoveChoice - 1);
 
         if (playerPokemon.canAttack()) {
             playerPokemon.attack(enemyPokemon, playerMove);
 
             if (enemyPokemon.isFainted()) {
-            playerWon = true;
-            running = false;
+                playerWon = true;
+                running = false;
             }
         }
 
@@ -98,7 +121,7 @@ int main() {
                 if (playerPokemon.isFainted()) {
                     playerWon = false;
                     running = false;
-                    }
+                }
             }
         }
 
@@ -126,9 +149,8 @@ int main() {
             playerPokemon.displayStats();
             enemyPokemon.displayStats();
 
-            char continueChoice;
             std::cout << "\nContinue? (y/n): ";
-            std::cin >> continueChoice;
+            char continueChoice = getYesNoInput();
 
             if (continueChoice == 'n') {
                 running = false;

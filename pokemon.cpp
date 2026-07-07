@@ -23,25 +23,79 @@ std::string Pokemon::getTypeName() {
     if (type == Type::Ghost)    return "Ghost";
     if (type == Type::Fighting) return "Fighting";
     if (type == Type::Dragon)   return "Dragon";
+    if (type == Type::Dark)     return "Dark";
+    if (type == Type::Steel)    return "Steel";
+    if (type == Type::Flying)   return "Flying";
+    if (type == Type::Poison)   return "Poison";
+
     return "Unknown";
 }
 
+
 float getTypeMultiplier(Type attackerType, Type defenderType) {
+
+    // Super effective matchups
     if (attackerType == Type::Fire     && defenderType == Type::Grass)    return 2.0f;
+    if (attackerType == Type::Fire     && defenderType == Type::Steel)    return 2.0f;
+
     if (attackerType == Type::Water    && defenderType == Type::Fire)     return 2.0f;
+
     if (attackerType == Type::Grass    && defenderType == Type::Water)    return 2.0f;
+
     if (attackerType == Type::Electric && defenderType == Type::Water)    return 2.0f;
+    if (attackerType == Type::Electric && defenderType == Type::Flying)   return 2.0f;
+
     if (attackerType == Type::Ghost    && defenderType == Type::Ghost)    return 2.0f;
+
     if (attackerType == Type::Fighting && defenderType == Type::Normal)   return 2.0f;
+    if (attackerType == Type::Fighting && defenderType == Type::Dark)     return 2.0f;
+    if (attackerType == Type::Fighting && defenderType == Type::Steel)    return 2.0f;
+
     if (attackerType == Type::Dragon   && defenderType == Type::Dragon)   return 2.0f;
 
+    if (attackerType == Type::Dark     && defenderType == Type::Ghost)    return 2.0f;
+
+    if (attackerType == Type::Flying   && defenderType == Type::Grass)    return 2.0f;
+    if (attackerType == Type::Flying   && defenderType == Type::Fighting) return 2.0f;
+
+    if (attackerType == Type::Poison   && defenderType == Type::Grass)    return 2.0f;
+
+    if (attackerType == Type::Steel    && defenderType == Type::Dragon)   return 2.0f;
+
+
+    // Not very effective matchups
     if (attackerType == Type::Fire     && defenderType == Type::Water)    return 0.5f;
+
     if (attackerType == Type::Water    && defenderType == Type::Grass)    return 0.5f;
+
     if (attackerType == Type::Grass    && defenderType == Type::Fire)     return 0.5f;
+    if (attackerType == Type::Grass    && defenderType == Type::Flying)   return 0.5f;
+    if (attackerType == Type::Grass    && defenderType == Type::Poison)   return 0.5f;
+
+    if (attackerType == Type::Electric && defenderType == Type::Grass)    return 0.5f;
+    if (attackerType == Type::Electric && defenderType == Type::Dragon)   return 0.5f;
+
     if (attackerType == Type::Normal   && defenderType == Type::Ghost)    return 0.5f;
+
+    if (attackerType == Type::Ghost    && defenderType == Type::Dark)     return 0.5f;
+
+    if (attackerType == Type::Fighting && defenderType == Type::Ghost)    return 0.5f;
+
+    if (attackerType == Type::Dark     && defenderType == Type::Fighting) return 0.5f;
+
+    if (attackerType == Type::Flying   && defenderType == Type::Electric) return 0.5f;
+    if (attackerType == Type::Flying   && defenderType == Type::Steel)    return 0.5f;
+
+    if (attackerType == Type::Poison   && defenderType == Type::Ghost)    return 0.5f;
+    if (attackerType == Type::Poison   && defenderType == Type::Steel)    return 0.5f;
+
+    if (attackerType == Type::Steel    && defenderType == Type::Fire)     return 0.5f;
+    if (attackerType == Type::Steel    && defenderType == Type::Water)    return 0.5f;
+    if (attackerType == Type::Steel    && defenderType == Type::Electric) return 0.5f;
 
     return 1.0f;
 }
+
 
 void Pokemon::attack(Pokemon& enemy, Move move) {
     std::cout << name << " used " << move.name << "!\n";

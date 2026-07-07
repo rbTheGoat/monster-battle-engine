@@ -10,7 +10,11 @@ enum class Type{
     Normal,
     Ghost,
     Fighting,
-    Dragon
+    Dragon,
+    Dark,
+    Steel,
+    Flying,
+    Poison
 };
 
 enum class Status{

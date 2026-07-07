@@ -4,7 +4,7 @@ Pokemon getPikachu() {
     Pokemon pikachu("Pikachu", 100, Type::Electric);
     pikachu.addMove({"Thunderbolt", 35, 100, Type::Electric, Status::Paralysis, 10, 2});
     pikachu.addMove({"Quick Attack", 15, 100, Type::Normal, Status::None, 0, 0});
-    pikachu.addMove({"Iron Tail", 25, 80, Type::Normal, Status::None, 0, 0});
+    pikachu.addMove({"Iron Tail", 25, 80, Type::Steel, Status::None, 0, 0});
     return pikachu;
 }
 
@@ -45,15 +45,15 @@ Pokemon getGengar() {
     Pokemon gengar("Gengar", 90, Type::Ghost);
     gengar.addMove({"Shadow Ball", 40,  90, Type::Ghost,  Status::None,     0, 0});
     gengar.addMove({"Lick",        20, 100, Type::Ghost,  Status::Paralysis, 20, 2});
-    gengar.addMove({"Dark Pulse",  35,  95, Type::Normal, Status::None,     0, 0});
-    gengar.addMove({"Poison Gas",   0,  75, Type::Normal, Status::Poison,  100, 4});
+    gengar.addMove({"Dark Pulse", 35, 95, Type::Dark, Status::None, 0, 0});
+    gengar.addMove({"Poison Gas", 0, 75, Type::Poison, Status::Poison, 100, 4});
     return gengar;
 }
 
 Pokemon getLucario() {
     Pokemon lucario("Lucario", 115, Type::Fighting);
     lucario.addMove({"Aura Sphere", 40, 100, Type::Fighting, Status::None, 0, 0});
-    lucario.addMove({"Bullet Punch", 25, 100, Type::Normal, Status::None, 0, 0});
+    lucario.addMove({"Bullet Punch", 25, 100, Type::Steel, Status::None, 0, 0});
     lucario.addMove({"Force Palm", 30, 95, Type::Fighting, Status::Paralysis, 20, 2});
     return lucario;
 }
@@ -61,7 +61,7 @@ Pokemon getLucario() {
 Pokemon getDragonite() {
     Pokemon dragonite("Dragonite", 130, Type::Dragon);
     dragonite.addMove({"Dragon Claw", 40, 95, Type::Dragon, Status::None, 0, 0});
-    dragonite.addMove({"Wing Attack", 30, 100, Type::Normal, Status::None, 0, 0});
+    dragonite.addMove({"Wing Attack", 30, 100, Type::Flying, Status::None, 0, 0});
     dragonite.addMove({"Hyper Beam", 50, 75, Type::Normal, Status::None, 0, 0});
     return dragonite;
 }
