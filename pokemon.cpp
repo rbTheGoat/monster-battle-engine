@@ -193,11 +193,49 @@ void Pokemon::addMove(Move move) {
     moves.push_back(move);
 }
 
+std::string getMoveTypeName(Type type) {
+    if (type == Type::Fire)     return "Fire";
+    if (type == Type::Water)    return "Water";
+    if (type == Type::Grass)    return "Grass";
+    if (type == Type::Electric) return "Electric";
+    if (type == Type::Normal)   return "Normal";
+    if (type == Type::Ghost)    return "Ghost";
+    if (type == Type::Fighting) return "Fighting";
+    if (type == Type::Dragon)   return "Dragon";
+    if (type == Type::Dark)     return "Dark";
+    if (type == Type::Steel)    return "Steel";
+    if (type == Type::Flying)   return "Flying";
+    if (type == Type::Poison)   return "Poison";
+
+    return "Unknown";
+}
+
+std::string getMoveStatusName(Status status) {
+    if (status == Status::None) return "None";
+    if (status == Status::Burn) return "Burn";
+    if (status == Status::Poison) return "Poison";
+    if (status == Status::Sleep) return "Sleep";
+    if (status == Status::Paralysis) return "Paralysis";
+
+    return "Unknown";
+}
+
+
+
 void Pokemon::showMoves() {
     for (int i = 0; i < moves.size(); i++) {
         std::cout << i + 1 << ". " << moves[i].name
-                  << "  Power: " << moves[i].damage
-                  << "  Accuracy: " << moves[i].accuracy << "%\n";
+                  << " | Power: " << moves[i].damage
+                  << " | Accuracy: " << moves[i].accuracy << "%"
+                  << " | Type: " << getMoveTypeName(moves[i].type);
+
+        if (moves[i].statusEffect != Status::None) {
+            std::cout << " | Status: " << getMoveStatusName(moves[i].statusEffect)
+                      << " (" << moves[i].statusChance << "%, "
+                      << moves[i].statusDuration << " turns)";
+        }
+
+        std::cout << "\n";
     }
 }
 
