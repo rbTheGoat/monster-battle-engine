@@ -16,3 +16,4 @@ PlayerProfile loadProfile();
 void saveProfile(const PlayerProfile& profile);
 void displayProfile(const PlayerProfile& profile);
 void resetProfile();
+void changePlayerName(PlayerProfile& profile);

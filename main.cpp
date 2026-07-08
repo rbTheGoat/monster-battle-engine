@@ -90,9 +90,10 @@ void showMainMenu() {
     std::cout << "\n========= Monster Battle Engine =========\n";
     std::cout << "1. Start Battle\n";
     std::cout << "2. View Player Profile\n";
-    std::cout << "3. Instructions\n";
-    std::cout << "4. Reset Profile\n";
-    std::cout << "5. Exit\n";
+    std::cout << "3. Change Player Name\n";
+    std::cout << "4. Instructions\n";
+    std::cout << "5. Reset Profile\n";
+    std::cout << "6. Exit\n";
     std::cout << "Choose an option: ";
 }
 
@@ -335,7 +336,7 @@ int main() {
     while (gameRunning) {
         showMainMenu();
 
-        int menuChoice = getValidInput(1, 5);
+        int menuChoice = getValidInput(1, 6);
 
         if (menuChoice == 1) {
             startBattle(profile);
@@ -346,10 +347,14 @@ int main() {
         }
 
         else if (menuChoice == 3) {
-            showInstructions();
+            changePlayerName(profile);
         }
 
         else if (menuChoice == 4) {
+            showInstructions();
+        }
+
+        else if (menuChoice == 5) {
             std::cout << "\nAre you sure you want to reset your profile? (y/n): ";
             char confirmReset = getYesNoInput();
 
@@ -362,7 +367,7 @@ int main() {
             }
         }
 
-        else if (menuChoice == 5) {
+        else if (menuChoice == 6) {
             std::cout << "\nExiting game...\n";
             gameRunning = false;
         }

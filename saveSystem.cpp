@@ -92,3 +92,18 @@ void resetProfile() {
     PlayerProfile defaultProfile = createDefaultProfile();
     saveProfile(defaultProfile);
 }
+
+void changePlayerName(PlayerProfile& profile) {
+    std::cout << "\nEnter new player name: ";
+
+    std::cin.ignore();
+    std::getline(std::cin, profile.playerName);
+
+    if (profile.playerName.empty()) {
+        profile.playerName = "Player";
+    }
+
+    saveProfile(profile);
+
+    std::cout << "Player name updated to: " << profile.playerName << "\n";
+}
