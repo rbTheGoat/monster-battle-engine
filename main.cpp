@@ -4,6 +4,7 @@
 #include <limits>
 #include "pokemon.h"
 #include "pokemonDatabase.h"
+#include "saveSystem.h"
 
 struct BattleStats {
     int playerDirectDamage = 0;
@@ -43,6 +44,24 @@ int getValidInput(int min, int max) {
     }
 }
 
+char getYesNoInput() {
+    char choice;
+
+    while (true) {
+        std::cin >> choice;
+
+        if (choice == 'y' || choice == 'Y') {
+            return 'y';
+        }
+
+        if (choice == 'n' || choice == 'N') {
+            return 'n';
+        }
+
+        std::cout << "Invalid input. Please enter y or n: ";
+    }
+}
+
 Pokemon getPokemonByChoice(int choice) {
     if (choice == 1) return getPikachu();
     if (choice == 2) return getCharmander();
@@ -70,8 +89,10 @@ void showPokemonMenu() {
 void showMainMenu() {
     std::cout << "\n========= Monster Battle Engine =========\n";
     std::cout << "1. Start Battle\n";
-    std::cout << "2. Instructions\n";
-    std::cout << "3. Exit\n";
+    std::cout << "2. View Player Profile\n";
+    std::cout << "3. Instructions\n";
+    std::cout << "4. Reset Profile\n";
+    std::cout << "5. Exit\n";
     std::cout << "Choose an option: ";
 }
 
@@ -85,7 +106,7 @@ void showInstructions() {
     std::cout << "6. Burn and Poison deal damage at the end of each round.\n";
     std::cout << "7. Sleep prevents attacking.\n";
     std::cout << "8. Paralysis has a chance to stop a Pokemon from attacking.\n";
-    std::cout << "9. Battle continues until one Pokemon faints.\n";
+    std::cout << "9. Your battle history is saved in your player profile.\n";
 }
 
 void showBattleSummary(
@@ -130,7 +151,28 @@ void showBattleSummary(
     }
 }
 
-void startBattle() {
+void updateProfileAfterBattle(
+    PlayerProfile& profile,
+    BattleStats stats,
+    bool playerWon,
+    int round
+) {
+    profile.battlesPlayed++;
+
+    if (playerWon) {
+        profile.wins++;
+    } else {
+        profile.losses++;
+    }
+
+    profile.totalDamageDealt += stats.playerDirectDamage + stats.statusDamageToEnemy;
+    profile.totalDamageTaken += stats.enemyDirectDamage + stats.statusDamageToPlayer;
+    profile.totalRoundsPlayed += round;
+
+    saveProfile(profile);
+}
+
+void startBattle(PlayerProfile& profile) {
     BattleStats stats;
 
     std::cout << "\nChoose your Pokemon:\n";
@@ -267,27 +309,49 @@ void startBattle() {
     }
 
     showBattleSummary(playerPokemon, enemyPokemon, stats, playerWon, round);
+    updateProfileAfterBattle(profile, stats, playerWon, round);
+
+    std::cout << "\nProfile saved.\n";
 }
 
 int main() {
     srand(time(0));
+
+    PlayerProfile profile = loadProfile();
 
     bool gameRunning = true;
 
     while (gameRunning) {
         showMainMenu();
 
-        int menuChoice = getValidInput(1, 3);
+        int menuChoice = getValidInput(1, 5);
 
         if (menuChoice == 1) {
-            startBattle();
+            startBattle(profile);
         }
 
         else if (menuChoice == 2) {
-            showInstructions();
+            displayProfile(profile);
         }
 
         else if (menuChoice == 3) {
+            showInstructions();
+        }
+
+        else if (menuChoice == 4) {
+            std::cout << "\nAre you sure you want to reset your profile? (y/n): ";
+            char confirmReset = getYesNoInput();
+
+            if (confirmReset == 'y') {
+                resetProfile();
+                profile = createDefaultProfile();
+                std::cout << "Profile reset successfully.\n";
+            } else {
+                std::cout << "Profile reset cancelled.\n";
+            }
+        }
+
+        else if (menuChoice == 5) {
             std::cout << "\nExiting game...\n";
             gameRunning = false;
         }
