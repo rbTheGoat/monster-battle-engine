@@ -361,3 +361,62 @@ bool Pokemon::canAttack() {
 
     return true;
 }
+
+
+Move Pokemon::chooseMoveByDifficulty(Pokemon& enemy, int difficulty) {
+
+    // Easy difficulty: fully random move
+    if (difficulty == 1) {
+        int randomIndex = rand() % moves.size();
+        return moves[randomIndex];
+    }
+
+    int bestMoveIndex = 0;
+    int secondBestMoveIndex = 0;
+
+    float bestScore = -1.0f;
+    float secondBestScore = -1.0f;
+
+    for (int i = 0; i < moves.size(); i++) {
+        float multiplier = getTypeMultiplier(moves[i].type, enemy.getType());
+        float accuracyFactor = moves[i].accuracy / 100.0f;
+
+        float score = moves[i].damage * multiplier * accuracyFactor;
+
+        if (moves[i].statusEffect != Status::None && enemy.getStatus() == Status::None) {
+            score += moves[i].statusChance * 0.2f;
+        }
+
+        float estimatedDamage = moves[i].damage * multiplier;
+
+        if (estimatedDamage >= enemy.getHp()) {
+            score += 1000.0f;
+        }
+
+        if (score > bestScore) {
+            secondBestScore = bestScore;
+            secondBestMoveIndex = bestMoveIndex;
+
+            bestScore = score;
+            bestMoveIndex = i;
+        }
+        else if (score > secondBestScore) {
+            secondBestScore = score;
+            secondBestMoveIndex = i;
+        }
+    }
+
+    // Hard difficulty: always best move
+    if (difficulty == 3) {
+        return moves[bestMoveIndex];
+    }
+
+    // Normal difficulty: 80% best move, 20% second-best move
+    int aiRoll = rand() % 100 + 1;
+
+    if (aiRoll <= 80 || moves.size() == 1) {
+        return moves[bestMoveIndex];
+    }
+
+    return moves[secondBestMoveIndex];
+}

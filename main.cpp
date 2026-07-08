@@ -96,6 +96,14 @@ void showMainMenu() {
     std::cout << "Choose an option: ";
 }
 
+void showDifficultyMenu() {
+    std::cout << "\nChoose difficulty:\n";
+    std::cout << "1. Easy   - Enemy chooses random moves\n";
+    std::cout << "2. Normal - Enemy uses smart AI with some randomness\n";
+    std::cout << "3. Hard   - Enemy always chooses the best move\n";
+    std::cout << "Choose an option: ";
+}
+
 void showInstructions() {
     std::cout << "\n========= Instructions =========\n";
     std::cout << "1. Choose your Pokemon.\n";
@@ -175,6 +183,9 @@ void updateProfileAfterBattle(
 void startBattle(PlayerProfile& profile) {
     BattleStats stats;
 
+    showDifficultyMenu();
+    int difficulty = getValidInput(1, 3);
+
     std::cout << "\nChoose your Pokemon:\n";
     showPokemonMenu();
 
@@ -237,7 +248,7 @@ void startBattle(PlayerProfile& profile) {
         if (running) {
             std::cout << "\nEnemy's turn...\n";
 
-            Move enemyMove = enemyPokemon.chooseBestMove(playerPokemon);
+            Move enemyMove = enemyPokemon.chooseMoveByDifficulty(playerPokemon, difficulty);
 
             bool enemyCanMove = enemyPokemon.canAttack();
 

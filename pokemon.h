@@ -62,7 +62,8 @@ class Pokemon{
     void setStatus(Status newStatus, int turns);
     void applyStatusEffect();
     std::string getStatusName();
-    Move chooseBestMove(Pokemon& enemy);
     bool canAttack();
     int getMoveCount();
+    Move chooseBestMove(Pokemon& enemy);
+    Move chooseMoveByDifficulty(Pokemon& enemy, int difficulty);
 };
