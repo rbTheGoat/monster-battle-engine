@@ -1,30 +1,42 @@
 # Battle Turn Simulator
 
-A C++ console-based turn-based battle simulator featuring type matchups, move accuracy, critical hits, status effects, enemy AI, battle summaries, and a persistent player profile system.
+A C++ console-based turn-based battle simulator inspired by classic monster battle systems. The project features type matchups, move accuracy, critical hits, status effects, difficulty-based enemy AI, battle summaries, input validation, and a persistent player profile system.
 
 ## Features
 
 * Turn-based battle system
 * Player Pokemon selection
-* Random enemy selection
+* Random enemy Pokemon selection
 * Multiple moves per Pokemon
 * Move accuracy system
 * Critical hit system
 * Random damage variation
 * Type effectiveness system
-* Status effects with turn durations
+* Expanded move details display
+* Status effects with turn durations:
 
   * Burn
   * Poison
   * Sleep
   * Paralysis
-* Status-based turn skipping
-* End-of-round status damage
+* Burn and Poison end-of-round damage
+* Sleep-based turn skipping
+* Paralysis-based chance to skip a turn
 * Rule-based enemy AI
+* Difficulty levels:
+
+  * Easy: random enemy move selection
+  * Normal: smart AI with controlled randomness
+  * Hard: optimal AI move selection
+* Main menu system
+* Replay loop
+* Instructions screen
 * Battle summary after each match
-* Player profile save/load system using file handling
-* Main menu and replay loop
-* Input validation for invalid user input
+* Player profile save/load system
+* Change player name option
+* Reset profile option
+* Input validation for invalid numbers and text input
+* Git/GitHub version control setup
 
 ## Tech Used
 
@@ -35,13 +47,35 @@ A C++ console-based turn-based battle simulator featuring type matchups, move ac
 * Enums
 * File Handling
 * Random Number Generation
+* Input Validation
 * Git and GitHub
 
-## Main Concepts Implemented
+## Project Structure
 
-### Object-Oriented Design
+```txt
+pokemon.h
+pokemon.cpp
+pokemonDatabase.h
+pokemonDatabase.cpp
+saveSystem.h
+saveSystem.cpp
+main.cpp
+README.md
+.gitignore
+```
 
-The project uses a `Pokemon` class to represent each battle character. Each object stores its own name, HP, type, moves, and current status condition.
+## Core Systems
+
+### Pokemon Class
+
+The `Pokemon` class represents each battle character. Each Pokemon stores:
+
+* Name
+* HP
+* Type
+* Move list
+* Current status condition
+* Status duration
 
 ### Move System
 
@@ -57,32 +91,48 @@ Moves are represented using a `Move` struct. Each move contains:
 
 ### Type Effectiveness
 
-Damage changes depending on type matchups. For example, Electric-type attacks deal more damage to Water-type opponents.
+The simulator uses type matchups to modify damage. For example:
+
+* Electric attacks are strong against Water.
+* Fire attacks are strong against Grass.
+* Normal attacks are weak against Ghost.
+* Dragon attacks are strong against Dragon.
+
+This makes move choice more strategic.
 
 ### Status Effects
 
 The game supports multiple status effects:
 
-* Burn causes damage at the end of each round.
-* Poison causes stronger end-of-round damage.
-* Sleep prevents attacking.
-* Paralysis gives a chance to skip a turn.
+* Burn deals damage at the end of each round.
+* Poison deals stronger damage at the end of each round.
+* Sleep prevents the Pokemon from attacking.
+* Paralysis gives a chance for the Pokemon to lose its turn.
+
+Each status effect lasts for a set number of turns.
 
 ### Enemy AI
 
-The enemy uses rule-based decision-making instead of choosing moves randomly. The AI evaluates moves based on:
+The enemy uses rule-based decision-making. The AI evaluates moves using:
 
-* Damage
+* Base damage
 * Type effectiveness
 * Accuracy
 * Status effect usefulness
 * Knockout potential
-* Controlled randomness to avoid being too predictable
+* Controlled randomness
+
+The game also includes difficulty levels:
+
+* Easy: enemy chooses random moves.
+* Normal: enemy usually chooses strong moves but sometimes chooses a second-best option.
+* Hard: enemy always chooses the best calculated move.
 
 ### Save System
 
-The player profile is saved in a local file and tracks:
+The player profile is saved locally using file handling. The profile tracks:
 
+* Player name
 * Battles played
 * Wins
 * Losses
@@ -90,9 +140,11 @@ The player profile is saved in a local file and tracks:
 * Total damage taken
 * Total rounds played
 
+The player can also reset the profile.
+
 ## How to Compile
 
-Use the following command:
+Use this command:
 
 ```bash
 g++ main.cpp pokemon.cpp pokemonDatabase.cpp saveSystem.cpp -o game
@@ -112,32 +164,48 @@ On Linux/macOS:
 ./game
 ```
 
-## Project Structure
+## Example Gameplay Flow
 
 ```txt
-pokemon.h
-pokemon.cpp
-pokemonDatabase.h
-pokemonDatabase.cpp
-saveSystem.h
-saveSystem.cpp
-main.cpp
-README.md
-.gitignore
+========= Monster Battle Engine =========
+1. Start Battle
+2. View Player Profile
+3. Change Player Name
+4. Instructions
+5. Reset Profile
+6. Exit
 ```
+
+During battle, the player chooses moves while the enemy uses AI to select its move. The battle continues until one Pokemon faints.
+
+## What I Learned
+
+This project helped me practice:
+
+* Class design
+* Encapsulation
+* Structs and enums
+* Vectors
+* File I/O
+* Game loop design
+* Input validation
+* Randomized game mechanics
+* Rule-based AI
+* Git/GitHub workflow
+* Writing cleaner modular C++ code
 
 ## Future Improvements
 
 * Add more Pokemon
 * Add more moves
 * Add more types
-* Improve enemy AI further
-* Add difficulty levels
-* Add item system
+* Add items and healing
 * Add team battles
-* Add graphical version using SFML
-* Add sound effects and animations in the graphical version
+* Add better battle animations in console
+* Add unit tests
+* Refactor internal names from Pokemon to a fully original monster system
+* Create a graphical version using SFML
 
 ## Status
 
-Console version is mostly complete. The next major upgrade planned is a graphical version using SFML.
+The console version is functionally complete. The next major planned upgrade is a graphical version using SFML.
