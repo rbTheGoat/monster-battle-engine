@@ -2,6 +2,23 @@
 #include <iostream>
 #include <cstdlib>
 
+// Battle balance constants
+const int PERCENT_ROLL_MAX = 100;
+
+const int MIN_DAMAGE_PERCENT = 85;
+const int MAX_DAMAGE_PERCENT = 100;
+
+const int CRIT_CHANCE = 10;
+const float CRIT_MULTIPLIER = 1.5f;
+
+const int BURN_DAMAGE = 5;
+const int POISON_DAMAGE = 8;
+const int PARALYSIS_SKIP_CHANCE = 25;
+
+const int AI_BEST_MOVE_CHANCE = 80;
+const float STATUS_SCORE_WEIGHT = 0.2f;
+const float KO_SCORE_BONUS = 1000.0f;
+
 Pokemon::Pokemon(std::string pokemonName, int pokemonHp, Type pokemonType) {
     name = pokemonName;
     hp = pokemonHp;
@@ -30,7 +47,6 @@ std::string Pokemon::getTypeName() {
 
     return "Unknown";
 }
-
 
 float getTypeMultiplier(Type attackerType, Type defenderType) {
 
@@ -96,35 +112,34 @@ float getTypeMultiplier(Type attackerType, Type defenderType) {
     return 1.0f;
 }
 
-
 void Pokemon::attack(Pokemon& enemy, Move move) {
     std::cout << name << " used " << move.name << "!\n";
 
-    int hitRoll = rand() % 100 + 1;
+    int hitRoll = rand() % PERCENT_ROLL_MAX + 1;
 
     if (hitRoll > move.accuracy) {
         std::cout << "But it missed!\n";
         return;
     }
 
-    int randFactor = rand() % 16 + 85;
-    int actualDamage = move.damage * randFactor / 100;
+    int randFactor = rand() % (MAX_DAMAGE_PERCENT - MIN_DAMAGE_PERCENT + 1) + MIN_DAMAGE_PERCENT;
+    int actualDamage = move.damage * randFactor / PERCENT_ROLL_MAX;
 
-    int critRoll = rand() % 100 + 1;
+    int critRoll = rand() % PERCENT_ROLL_MAX + 1;
 
-    if (critRoll <= 10) {
-        actualDamage = actualDamage * 1.5;
+    if (critRoll <= CRIT_CHANCE && actualDamage > 0) {
+        actualDamage = actualDamage * CRIT_MULTIPLIER;
         std::cout << "Critical Hit!\n";
     }
 
     float multiplier = getTypeMultiplier(move.type, enemy.getType());
     actualDamage = actualDamage * multiplier;
 
-    if (multiplier == 2.0f) {
+    if (multiplier == 2.0f && actualDamage > 0) {
         std::cout << "It's super effective!\n";
     }
 
-    if (multiplier == 0.5f) {
+    if (multiplier == 0.5f && actualDamage > 0) {
         std::cout << "It's not very effective...\n";
     }
 
@@ -140,7 +155,7 @@ void Pokemon::attack(Pokemon& enemy, Move move) {
     }
 
     if (move.statusEffect != Status::None && enemy.getStatus() == Status::None) {
-        int statusRoll = rand() % 100 + 1;
+        int statusRoll = rand() % PERCENT_ROLL_MAX + 1;
 
         if (statusRoll <= move.statusChance) {
             enemy.setStatus(move.statusEffect, move.statusDuration);
@@ -170,6 +185,7 @@ std::string Pokemon::getName() {
 void Pokemon::displayStats() {
     std::cout << "Name: " << name << std::endl;
     std::cout << "HP: " << hp << std::endl;
+    std::cout << "Type: " << getTypeName() << std::endl;
     std::cout << "Status: " << getStatusName() << std::endl;
 }
 
@@ -189,13 +205,12 @@ Move Pokemon::getMove(int index) {
     return moves[index];
 }
 
-int Pokemon::getHp() {
-    return hp;
-}
-
-// added
 int Pokemon::getMoveCount() {
     return moves.size();
+}
+
+int Pokemon::getHp() {
+    return hp;
 }
 
 Move Pokemon::chooseBestMove(Pokemon& enemy) {
@@ -206,20 +221,19 @@ Move Pokemon::chooseBestMove(Pokemon& enemy) {
     float secondBestScore = -1.0f;
 
     for (int i = 0; i < moves.size(); i++) {
-
         float multiplier = getTypeMultiplier(moves[i].type, enemy.getType());
         float accuracyFactor = moves[i].accuracy / 100.0f;
 
         float score = moves[i].damage * multiplier * accuracyFactor;
 
         if (moves[i].statusEffect != Status::None && enemy.getStatus() == Status::None) {
-            score += moves[i].statusChance * 0.2f;
+            score += moves[i].statusChance * STATUS_SCORE_WEIGHT;
         }
 
         float estimatedDamage = moves[i].damage * multiplier;
 
         if (estimatedDamage >= enemy.getHp()) {
-            score += 1000.0f;
+            score += KO_SCORE_BONUS;
         }
 
         if (score > bestScore) {
@@ -235,9 +249,9 @@ Move Pokemon::chooseBestMove(Pokemon& enemy) {
         }
     }
 
-    int aiRoll = rand() % 100 + 1;
+    int aiRoll = rand() % PERCENT_ROLL_MAX + 1;
 
-    if (aiRoll <= 80 || moves.size() == 1) {
+    if (aiRoll <= AI_BEST_MOVE_CHANCE || moves.size() == 1) {
         return moves[bestMoveIndex];
     }
 
@@ -258,11 +272,12 @@ void Pokemon::setStatus(Status newStatus, int turns) {
 }
 
 std::string Pokemon::getStatusName() {
-    if (status == Status::None)      return "None";
-    if (status == Status::Burn)      return "Burned";
-    if (status == Status::Poison)    return "Poisoned";
-    if (status == Status::Sleep)     return "Asleep";
+    if (status == Status::None) return "None";
+    if (status == Status::Burn) return "Burned";
+    if (status == Status::Poison) return "Poisoned";
+    if (status == Status::Sleep) return "Asleep";
     if (status == Status::Paralysis) return "Paralyzed";
+
     return "Unknown";
 }
 
@@ -273,12 +288,12 @@ void Pokemon::applyStatusEffect() {
 
     if (status == Status::Burn) {
         std::cout << name << " is hurt by burn!\n";
-        takeDamage(5);
+        takeDamage(BURN_DAMAGE);
     }
 
     if (status == Status::Poison) {
         std::cout << name << " is hurt by poison!\n";
-        takeDamage(8);
+        takeDamage(POISON_DAMAGE);
     }
 
     statusTurnsRemaining--;
@@ -298,9 +313,9 @@ bool Pokemon::canAttack() {
     }
 
     if (status == Status::Paralysis) {
-        int paralysisRoll = rand() % 100 + 1;
+        int paralysisRoll = rand() % PERCENT_ROLL_MAX + 1;
 
-        if (paralysisRoll <= 25) {
+        if (paralysisRoll <= PARALYSIS_SKIP_CHANCE) {
             std::cout << name << " is paralyzed and cannot move!\n";
             return false;
         }
