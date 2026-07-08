@@ -1,6 +1,7 @@
 #include "saveSystem.h"
 #include <iostream>
 #include <fstream>
+#include <limits>
 
 const std::string SAVE_FILE_NAME = "save.txt";
 
@@ -92,11 +93,10 @@ void resetProfile() {
     PlayerProfile defaultProfile = createDefaultProfile();
     saveProfile(defaultProfile);
 }
-
 void changePlayerName(PlayerProfile& profile) {
     std::cout << "\nEnter new player name: ";
 
-    std::cin.ignore();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     std::getline(std::cin, profile.playerName);
 
     if (profile.playerName.empty()) {

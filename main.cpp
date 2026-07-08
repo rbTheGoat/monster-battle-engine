@@ -2,23 +2,11 @@
 #include <cstdlib>
 #include <ctime>
 #include <limits>
+
 #include "pokemon.h"
 #include "pokemonDatabase.h"
 #include "saveSystem.h"
-
-struct BattleStats {
-    int playerDirectDamage = 0;
-    int enemyDirectDamage = 0;
-
-    int statusDamageToPlayer = 0;
-    int statusDamageToEnemy = 0;
-
-    int playerStatusesApplied = 0;
-    int enemyStatusesApplied = 0;
-
-    int playerTurnsSkipped = 0;
-    int enemyTurnsSkipped = 0;
-};
+#include "battle.h"
 
 int getValidInput(int min, int max) {
     int choice;
@@ -86,6 +74,14 @@ void showPokemonMenu() {
     std::cout << "8. Dragonite\n";
 }
 
+void showDifficultyMenu() {
+    std::cout << "\nChoose difficulty:\n";
+    std::cout << "1. Easy   - Enemy chooses random moves\n";
+    std::cout << "2. Normal - Enemy uses smart AI with some randomness\n";
+    std::cout << "3. Hard   - Enemy always chooses the best move\n";
+    std::cout << "Choose an option: ";
+}
+
 void showMainMenu() {
     std::cout << "\n========= Monster Battle Engine =========\n";
     std::cout << "1. Start Battle\n";
@@ -94,14 +90,6 @@ void showMainMenu() {
     std::cout << "4. Instructions\n";
     std::cout << "5. Reset Profile\n";
     std::cout << "6. Exit\n";
-    std::cout << "Choose an option: ";
-}
-
-void showDifficultyMenu() {
-    std::cout << "\nChoose difficulty:\n";
-    std::cout << "1. Easy   - Enemy chooses random moves\n";
-    std::cout << "2. Normal - Enemy uses smart AI with some randomness\n";
-    std::cout << "3. Hard   - Enemy always chooses the best move\n";
     std::cout << "Choose an option: ";
 }
 
@@ -182,8 +170,6 @@ void updateProfileAfterBattle(
 }
 
 void startBattle(PlayerProfile& profile) {
-    BattleStats stats;
-
     showDifficultyMenu();
     int difficulty = getValidInput(1, 3);
 
@@ -201,126 +187,51 @@ void startBattle(PlayerProfile& profile) {
 
     Pokemon enemyPokemon = getPokemonByChoice(randomChoice);
 
+    Battle battle(playerPokemon, enemyPokemon, difficulty);
+
     std::cout << "\n--- Battle Start ---\n";
-    playerPokemon.displayStats();
-    enemyPokemon.displayStats();
+    battle.getPlayerPokemon().displayStats();
+    battle.getEnemyPokemon().displayStats();
 
-    bool running = true;
-    int round = 1;
-    bool playerWon = false;
+    while (!battle.isBattleOver()) {
+        std::cout << "\n========= Round " << battle.getRound() << " =========\n";
 
-    while (running) {
-        std::cout << "\n========= Round " << round << " =========\n";
+        std::cout << "\nChoose " << battle.getPlayerPokemon().getName() << "'s move:\n";
+        battle.getPlayerPokemon().showMoves();
 
-        // PLAYER TURN
-        std::cout << "\nChoose " << playerPokemon.getName() << "'s move:\n";
-        playerPokemon.showMoves();
+        int playerMoveChoice = getValidInput(1, battle.getPlayerPokemon().getMoveCount());
 
-        int playerMoveChoice = getValidInput(1, playerPokemon.getMoveCount());
-        Move playerMove = playerPokemon.getMove(playerMoveChoice - 1);
+        battle.playerAttack(playerMoveChoice - 1);
 
-        bool playerCanMove = playerPokemon.canAttack();
-
-        if (playerCanMove) {
-            int enemyHpBefore = enemyPokemon.getHp();
-            Status enemyStatusBefore = enemyPokemon.getStatus();
-
-            playerPokemon.attack(enemyPokemon, playerMove);
-
-            int damageDealt = enemyHpBefore - enemyPokemon.getHp();
-
-            if (damageDealt > 0) {
-                stats.playerDirectDamage += damageDealt;
-            }
-
-            if (enemyStatusBefore == Status::None && enemyPokemon.getStatus() != Status::None) {
-                stats.playerStatusesApplied++;
-            }
-        } else {
-            stats.playerTurnsSkipped++;
-        }
-
-        if (enemyPokemon.isFainted()) {
-            playerWon = true;
-            running = false;
-        }
-
-        // ENEMY TURN
-        if (running) {
+        if (!battle.isBattleOver()) {
             std::cout << "\nEnemy's turn...\n";
-
-            Move enemyMove = enemyPokemon.chooseMoveByDifficulty(playerPokemon, difficulty);
-
-            bool enemyCanMove = enemyPokemon.canAttack();
-
-            if (enemyCanMove) {
-                int playerHpBefore = playerPokemon.getHp();
-                Status playerStatusBefore = playerPokemon.getStatus();
-
-                enemyPokemon.attack(playerPokemon, enemyMove);
-
-                int damageDealt = playerHpBefore - playerPokemon.getHp();
-
-                if (damageDealt > 0) {
-                    stats.enemyDirectDamage += damageDealt;
-                }
-
-                if (playerStatusBefore == Status::None && playerPokemon.getStatus() != Status::None) {
-                    stats.enemyStatusesApplied++;
-                }
-            } else {
-                stats.enemyTurnsSkipped++;
-            }
-
-            if (playerPokemon.isFainted()) {
-                playerWon = false;
-                running = false;
-            }
+            battle.enemyTurn();
         }
 
-        // END OF ROUND STATUS EFFECTS
-        if (running) {
+        if (!battle.isBattleOver()) {
             std::cout << "\n--- End of Round Effects ---\n";
-
-            int playerHpBeforeStatus = playerPokemon.getHp();
-            int enemyHpBeforeStatus = enemyPokemon.getHp();
-
-            playerPokemon.applyStatusEffect();
-            enemyPokemon.applyStatusEffect();
-
-            int playerStatusDamage = playerHpBeforeStatus - playerPokemon.getHp();
-            int enemyStatusDamage = enemyHpBeforeStatus - enemyPokemon.getHp();
-
-            if (playerStatusDamage > 0) {
-                stats.statusDamageToPlayer += playerStatusDamage;
-            }
-
-            if (enemyStatusDamage > 0) {
-                stats.statusDamageToEnemy += enemyStatusDamage;
-            }
-
-            if (playerPokemon.isFainted()) {
-                playerWon = false;
-                running = false;
-            }
-
-            if (enemyPokemon.isFainted()) {
-                playerWon = true;
-                running = false;
-            }
+            battle.applyEndRoundEffects();
         }
 
-        // STATS AFTER ROUND
-        if (running) {
+        if (!battle.isBattleOver()) {
             std::cout << "\n--- Current Stats ---\n";
-            playerPokemon.displayStats();
-            enemyPokemon.displayStats();
-
-            round++;
+            battle.getPlayerPokemon().displayStats();
+            battle.getEnemyPokemon().displayStats();
         }
     }
 
-    showBattleSummary(playerPokemon, enemyPokemon, stats, playerWon, round);
+    BattleStats stats = battle.getStats();
+    bool playerWon = battle.didPlayerWin();
+    int round = battle.getRound();
+
+    showBattleSummary(
+        battle.getPlayerPokemon(),
+        battle.getEnemyPokemon(),
+        stats,
+        playerWon,
+        round
+    );
+
     updateProfileAfterBattle(profile, stats, playerWon, round);
 
     std::cout << "\nProfile saved.\n";

@@ -52,7 +52,7 @@ A C++ console-based turn-based battle simulator inspired by classic monster batt
 
 ## Project Structure
 
-```txt
+
 pokemon.h
 pokemon.cpp
 pokemonDatabase.h
@@ -62,7 +62,7 @@ saveSystem.cpp
 main.cpp
 README.md
 .gitignore
-```
+
 
 ## Core Systems
 
