@@ -4,3 +4,5 @@
 .vscode/
 .DS_Store
 save.txt
+build/
+out/
