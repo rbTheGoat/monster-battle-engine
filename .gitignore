@@ -1,8 +1,14 @@
 *.exe
 *.o
 *.out
+
 .vscode/
-.DS_Store
-save.txt
+.vs/
+
 build/
 out/
+
+.DS_Store
+save.txt
+
+CMakeSettings.json
