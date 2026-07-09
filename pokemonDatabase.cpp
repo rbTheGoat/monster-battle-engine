@@ -1,67 +1,386 @@
 #include "pokemonDatabase.h"
 
-Pokemon getPikachu() {
-    Pokemon pikachu("Pikachu", 100, Type::Electric);
-    pikachu.addMove({"Thunderbolt", 35, 100, Type::Electric, Status::Paralysis, 10, 2});
-    pikachu.addMove({"Quick Attack", 15, 100, Type::Normal, Status::None, 0, 0});
-    pikachu.addMove({"Iron Tail", 25, 80, Type::Steel, Status::None, 0, 0});
-    return pikachu;
+Pokemon getVoltbit()
+{
+    Pokemon voltbit(
+        "Voltbit",
+        100,
+        Type::Electric
+    );
+
+    voltbit.addMove({
+        "Arc Pounce",
+        25,
+        100,
+        Type::Electric,
+        Status::Paralysis,
+        15,
+        2,
+        MoveAnimation::Lunge
+    });
+
+    voltbit.addMove({
+        "Coil Discharge",
+        35,
+        95,
+        Type::Electric,
+        Status::Paralysis,
+        20,
+        2,
+        MoveAnimation::Beam
+    });
+
+    voltbit.addMove({
+        "Flashstep",
+        20,
+        100,
+        Type::Normal,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Lunge
+    });
+
+    return voltbit;
 }
 
-Pokemon getCharmander() {
-    Pokemon charmander("Charmander", 95, Type::Fire);
-    charmander.addMove({"Scratch", 20, 100, Type::Normal, Status::None, 0, 0});
-    charmander.addMove({"Ember", 30, 95, Type::Fire, Status::Burn, 20, 3});
-    charmander.addMove({"Flamethrower", 40, 90, Type::Fire, Status::Burn, 15, 3});
-    return charmander;
+Pokemon getEmberling()
+{
+    Pokemon emberling(
+        "Emberling",
+        95,
+        Type::Fire
+    );
+
+    emberling.addMove({
+        "Cinder Claw",
+        25,
+        100,
+        Type::Fire,
+        Status::Burn,
+        15,
+        3,
+        MoveAnimation::Lunge
+    });
+
+    emberling.addMove({
+        "Flame Spit",
+        35,
+        90,
+        Type::Fire,
+        Status::Burn,
+        20,
+        3,
+        MoveAnimation::Projectile
+    });
+
+    emberling.addMove({
+        "Tail Sweep",
+        20,
+        100,
+        Type::Normal,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Impact
+    });
+
+    return emberling;
 }
 
-Pokemon getBulbasaur() {
-    Pokemon bulbasaur("Bulbasaur", 110, Type::Grass);
-    bulbasaur.addMove({"Vine Whip",    25, 100, Type::Grass, Status::None,  0,   0});
-    bulbasaur.addMove({"Razor Leaf",   35,  90, Type::Grass, Status::None,  0,   0});
-    bulbasaur.addMove({"Tackle",       15, 100, Type::Normal, Status::None, 0,   0});
-    bulbasaur.addMove({"Sleep Powder",  0,  75, Type::Grass, Status::Sleep, 100, 2});
-    return bulbasaur;
+Pokemon getMossback()
+{
+    Pokemon mossback(
+        "Mossback",
+        110,
+        Type::Grass
+    );
+
+    mossback.addMove({
+        "Vine Coil",
+        25,
+        100,
+        Type::Grass,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Lunge
+    });
+
+    mossback.addMove({
+        "Thorn Burst",
+        35,
+        90,
+        Type::Grass,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Projectile
+    });
+
+    mossback.addMove({
+        "Dream Spores",
+        0,
+        75,
+        Type::Grass,
+        Status::Sleep,
+        100,
+        2,
+        MoveAnimation::StatusPulse
+    });
+
+    mossback.addMove({
+        "Venom Bloom",
+        0,
+        80,
+        Type::Poison,
+        Status::Poison,
+        100,
+        4,
+        MoveAnimation::StatusPulse
+    });
+
+    return mossback;
 }
 
-Pokemon getSquirtle() {
-    Pokemon squirtle("Squirtle", 105, Type::Water);
-    squirtle.addMove({"Water Gun", 30, 100, Type::Water, Status::None, 0, 0});
-    squirtle.addMove({"Bubble", 20, 100, Type::Water, Status::None, 0, 0});
-    squirtle.addMove({"Headbutt", 25, 90, Type::Normal, Status::None, 0, 0});
-    return squirtle;
+Pokemon getAquafin()
+{
+    Pokemon aquafin(
+        "Aquafin",
+        105,
+        Type::Water
+    );
+
+    aquafin.addMove({
+        "Riptide Rush",
+        30,
+        100,
+        Type::Water,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Lunge
+    });
+
+    aquafin.addMove({
+        "Razor Fin",
+        25,
+        100,
+        Type::Normal,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Lunge
+    });
+
+    aquafin.addMove({
+        "Tidal Lance",
+        40,
+        85,
+        Type::Water,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Projectile
+    });
+
+    return aquafin;
 }
 
-Pokemon getEevee() {
-    Pokemon eevee("Eevee", 100, Type::Normal);
-    eevee.addMove({"Quick Attack", 20, 100, Type::Normal, Status::None, 0, 0});
-    eevee.addMove({"Bite", 30, 95, Type::Normal, Status::None, 0, 0});
-    eevee.addMove({"Swift", 25, 100, Type::Normal, Status::None, 0, 0});
-    return eevee;
+Pokemon getWildkin()
+{
+    Pokemon wildkin(
+        "Wildkin",
+        100,
+        Type::Normal
+    );
+
+    wildkin.addMove({
+        "Burrow Rush",
+        25,
+        100,
+        Type::Normal,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Lunge
+    });
+
+    wildkin.addMove({
+        "Sand Slam",
+        35,
+        90,
+        Type::Normal,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Impact
+    });
+
+    wildkin.addMove({
+        "Tremor Stomp",
+        30,
+        90,
+        Type::Normal,
+        Status::Paralysis,
+        20,
+        2,
+        MoveAnimation::Impact
+    });
+
+    return wildkin;
 }
 
-Pokemon getGengar() {
-    Pokemon gengar("Gengar", 90, Type::Ghost);
-    gengar.addMove({"Shadow Ball", 40,  90, Type::Ghost,  Status::None,     0, 0});
-    gengar.addMove({"Lick",        20, 100, Type::Ghost,  Status::Paralysis, 20, 2});
-    gengar.addMove({"Dark Pulse", 35, 95, Type::Dark, Status::None, 0, 0});
-    gengar.addMove({"Poison Gas", 0, 75, Type::Poison, Status::Poison, 100, 4});
-    return gengar;
+Pokemon getShadegeist()
+{
+    Pokemon shadegeist(
+        "Shadegeist",
+        90,
+        Type::Ghost
+    );
+
+    shadegeist.addMove({
+        "Phantom Dive",
+        35,
+        95,
+        Type::Ghost,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Lunge
+    });
+
+    shadegeist.addMove({
+        "Void Orb",
+        40,
+        90,
+        Type::Ghost,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Projectile
+    });
+
+    shadegeist.addMove({
+        "Dread Gaze",
+        0,
+        80,
+        Type::Dark,
+        Status::Sleep,
+        100,
+        2,
+        MoveAnimation::StatusPulse
+    });
+
+    shadegeist.addMove({
+        "Shadow Talon",
+        30,
+        100,
+        Type::Dark,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Lunge
+    });
+
+    return shadegeist;
 }
 
-Pokemon getLucario() {
-    Pokemon lucario("Lucario", 115, Type::Fighting);
-    lucario.addMove({"Aura Sphere", 40, 100, Type::Fighting, Status::None, 0, 0});
-    lucario.addMove({"Bullet Punch", 25, 100, Type::Steel, Status::None, 0, 0});
-    lucario.addMove({"Force Palm", 30, 95, Type::Fighting, Status::Paralysis, 20, 2});
-    return lucario;
+Pokemon getIronfang()
+{
+    Pokemon ironfang(
+        "Ironfang",
+        115,
+        Type::Fighting
+    );
+
+    ironfang.addMove({
+        "Alloy Charge",
+        35,
+        95,
+        Type::Steel,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Lunge
+    });
+
+    ironfang.addMove({
+        "Horn Breaker",
+        40,
+        85,
+        Type::Fighting,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Lunge
+    });
+
+    ironfang.addMove({
+        "Steel Jab",
+        25,
+        100,
+        Type::Steel,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Lunge
+    });
+
+    ironfang.addMove({
+        "Groundbreaker",
+        30,
+        90,
+        Type::Fighting,
+        Status::Paralysis,
+        20,
+        2,
+        MoveAnimation::Impact
+    });
+
+    return ironfang;
 }
 
-Pokemon getDragonite() {
-    Pokemon dragonite("Dragonite", 130, Type::Dragon);
-    dragonite.addMove({"Dragon Claw", 40, 95, Type::Dragon, Status::None, 0, 0});
-    dragonite.addMove({"Wing Attack", 30, 100, Type::Flying, Status::None, 0, 0});
-    dragonite.addMove({"Hyper Beam", 50, 75, Type::Normal, Status::None, 0, 0});
-    return dragonite;
+Pokemon getSkywyrm()
+{
+    Pokemon skywyrm(
+        "Skywyrm",
+        130,
+        Type::Dragon
+    );
+
+    skywyrm.addMove({
+        "Wyrm Claw",
+        40,
+        95,
+        Type::Dragon,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Lunge
+    });
+
+    skywyrm.addMove({
+        "Gale Sweep",
+        30,
+        100,
+        Type::Flying,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Projectile
+    });
+
+    skywyrm.addMove({
+        "Azure Beam",
+        50,
+        75,
+        Type::Dragon,
+        Status::None,
+        0,
+        0,
+        MoveAnimation::Beam
+    });
+
+    return skywyrm;
 }

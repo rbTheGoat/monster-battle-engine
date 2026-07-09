@@ -2,11 +2,11 @@
 
 #include "pokemon.h"
 
-Pokemon getPikachu();
-Pokemon getCharmander();
-Pokemon getBulbasaur();
-Pokemon getSquirtle();
-Pokemon getEevee();
-Pokemon getGengar();
-Pokemon getLucario();
-Pokemon getDragonite();
+Pokemon getVoltbit();
+Pokemon getEmberling();
+Pokemon getMossback();
+Pokemon getAquafin();
+Pokemon getWildkin();
+Pokemon getShadegeist();
+Pokemon getIronfang();
+Pokemon getSkywyrm();
