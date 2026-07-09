@@ -40,28 +40,18 @@ bool isButtonClicked(
     const sf::RectangleShape& button,
     sf::Vector2f mousePosition
 ) {
-    return button
-        .getGlobalBounds()
-        .contains(mousePosition);
+    return button.getGlobalBounds().contains(mousePosition);
 }
 
 void updateButtonHover(
     sf::RectangleShape& button,
     sf::Vector2f mousePosition
 ) {
-    if (
-        button
-        .getGlobalBounds()
-        .contains(mousePosition)
-        ) {
-        button.setFillColor(
-            sf::Color(120, 120, 170)
-        );
+    if (button.getGlobalBounds().contains(mousePosition)) {
+        button.setFillColor(sf::Color(120, 120, 170));
     }
     else {
-        button.setFillColor(
-            sf::Color(90, 90, 120)
-        );
+        button.setFillColor(sf::Color(90, 90, 120));
     }
 }
 
@@ -84,7 +74,91 @@ Pokemon getCreatureByChoice(int choice)
 }
 
 // --------------------------------------------------
-// HP helpers
+// Status helpers
+// --------------------------------------------------
+
+std::string getStatusDisplayText(Status status)
+{
+    if (status == Status::None) {
+        return "Status: None";
+    }
+
+    if (status == Status::Burn) {
+        return "Status: Burned";
+    }
+
+    if (status == Status::Poison) {
+        return "Status: Poisoned";
+    }
+
+    if (status == Status::Sleep) {
+        return "Status: Asleep";
+    }
+
+    if (status == Status::Paralysis) {
+        return "Status: Paralyzed";
+    }
+
+    return "Status: Unknown";
+}
+
+sf::Color getStatusColor(Status status)
+{
+    if (status == Status::None) {
+        return sf::Color(90, 90, 90);
+    }
+
+    if (status == Status::Burn) {
+        return sf::Color(230, 90, 40);
+    }
+
+    if (status == Status::Poison) {
+        return sf::Color(150, 70, 190);
+    }
+
+    if (status == Status::Sleep) {
+        return sf::Color(80, 130, 220);
+    }
+
+    if (status == Status::Paralysis) {
+        return sf::Color(230, 210, 60);
+    }
+
+    return sf::Color::White;
+}
+
+void updateStatusDisplay(
+    Battle& battle,
+    sf::Text& playerStatusText,
+    sf::Text& enemyStatusText,
+    sf::RectangleShape& playerStatusIcon,
+    sf::RectangleShape& enemyStatusIcon
+) {
+    Status playerStatus =
+        battle.getPlayerPokemon().getStatus();
+
+    Status enemyStatus =
+        battle.getEnemyPokemon().getStatus();
+
+    playerStatusText.setString(
+        getStatusDisplayText(playerStatus)
+    );
+
+    enemyStatusText.setString(
+        getStatusDisplayText(enemyStatus)
+    );
+
+    playerStatusIcon.setFillColor(
+        getStatusColor(playerStatus)
+    );
+
+    enemyStatusIcon.setFillColor(
+        getStatusColor(enemyStatus)
+    );
+}
+
+// --------------------------------------------------
+// HP and battle text helpers
 // --------------------------------------------------
 
 void updateHpBar(
@@ -160,9 +234,7 @@ std::string getMoveNameOrEmpty(
         index >= 0 &&
         index < creature.getMoveCount()
         ) {
-        return creature
-            .getMove(index)
-            .name;
+        return creature.getMove(index).name;
     }
 
     return "Empty";
@@ -183,16 +255,12 @@ void updateBattleText(
 ) {
     playerNameText.setString(
         "Player: " +
-        battle
-        .getPlayerPokemon()
-        .getName()
+        battle.getPlayerPokemon().getName()
     );
 
     enemyNameText.setString(
         "Enemy: " +
-        battle
-        .getEnemyPokemon()
-        .getName()
+        battle.getEnemyPokemon().getName()
     );
 
     playerHpText.setString(
@@ -241,7 +309,7 @@ void updateBattleText(
 }
 
 // --------------------------------------------------
-// Sprite helpers
+// Texture and sprite helpers
 // --------------------------------------------------
 
 bool loadPixelTexture(
@@ -275,19 +343,27 @@ void scaleSpriteToSize(
     float targetWidth,
     float targetHeight
 ) {
-    sf::Vector2u size =
+    sf::Vector2u textureSize =
         texture.getSize();
 
-    if (size.x == 0 || size.y == 0) {
+    if (
+        textureSize.x == 0 ||
+        textureSize.y == 0
+        ) {
         return;
     }
 
-    sprite.setScale({
+    float scaleX =
         targetWidth /
-            static_cast<float>(size.x),
+        static_cast<float>(textureSize.x);
 
+    float scaleY =
         targetHeight /
-            static_cast<float>(size.y)
+        static_cast<float>(textureSize.y);
+
+    sprite.setScale({
+        scaleX,
+        scaleY
         });
 }
 
@@ -336,37 +412,37 @@ std::string getCreatureImagePath(
 }
 
 sf::Color getCreatureFallbackColor(
-    const std::string& name
+    const std::string& creatureName
 ) {
-    if (name == "Voltbit") {
+    if (creatureName == "Voltbit") {
         return sf::Color(240, 210, 70);
     }
 
-    if (name == "Emberling") {
+    if (creatureName == "Emberling") {
         return sf::Color(230, 95, 55);
     }
 
-    if (name == "Mossback") {
+    if (creatureName == "Mossback") {
         return sf::Color(90, 180, 90);
     }
 
-    if (name == "Aquafin") {
+    if (creatureName == "Aquafin") {
         return sf::Color(80, 170, 240);
     }
 
-    if (name == "Wildkin") {
+    if (creatureName == "Wildkin") {
         return sf::Color(170, 120, 75);
     }
 
-    if (name == "Shadegeist") {
+    if (creatureName == "Shadegeist") {
         return sf::Color(120, 80, 170);
     }
 
-    if (name == "Ironfang") {
+    if (creatureName == "Ironfang") {
         return sf::Color(70, 100, 180);
     }
 
-    if (name == "Skywyrm") {
+    if (creatureName == "Skywyrm") {
         return sf::Color(230, 160, 80);
     }
 
@@ -385,14 +461,10 @@ void setupCreatureVisuals(
     sf::RectangleShape& enemyBody
 ) {
     std::string playerName =
-        battle
-        .getPlayerPokemon()
-        .getName();
+        battle.getPlayerPokemon().getName();
 
     std::string enemyName =
-        battle
-        .getEnemyPokemon()
-        .getName();
+        battle.getEnemyPokemon().getName();
 
     playerTextureLoaded =
         loadPixelTexture(
@@ -413,24 +485,15 @@ void setupCreatureVisuals(
         );
 
     playerBody.setFillColor(
-        getCreatureFallbackColor(
-            playerName
-        )
+        getCreatureFallbackColor(playerName)
     );
 
     enemyBody.setFillColor(
-        getCreatureFallbackColor(
-            enemyName
-        )
+        getCreatureFallbackColor(enemyName)
     );
 
-    playerSprite.setColor(
-        sf::Color::White
-    );
-
-    enemySprite.setColor(
-        sf::Color::White
-    );
+    playerSprite.setColor(sf::Color::White);
+    enemySprite.setColor(sf::Color::White);
 
     if (playerTextureLoaded) {
         playerSprite.setTexture(
@@ -481,18 +544,11 @@ void setCreaturePosition(
     sf::Vector2f eyePosition
 ) {
     if (textureLoaded) {
-        sprite.setPosition(
-            spritePosition
-        );
+        sprite.setPosition(spritePosition);
     }
     else {
-        body.setPosition(
-            bodyPosition
-        );
-
-        eye.setPosition(
-            eyePosition
-        );
+        body.setPosition(bodyPosition);
+        eye.setPosition(eyePosition);
     }
 }
 
@@ -517,18 +573,19 @@ sf::Vector2f interpolatePosition(
 ) {
     return {
         start.x +
-            (end.x - start.x) *
-            progress,
+            (end.x - start.x) * progress,
 
         start.y +
-            (end.y - start.y) *
-            progress
+            (end.y - start.y) * progress
     };
 }
 
-sf::Color getMoveEffectColor(
-    Type type
-) {
+// --------------------------------------------------
+// Move-animation helpers
+// --------------------------------------------------
+
+sf::Color getMoveEffectColor(Type type)
+{
     if (type == Type::Fire) {
         return sf::Color(255, 90, 40);
     }
@@ -619,13 +676,10 @@ int main()
 
     sf::Font font;
 
-    if (
-        !font.openFromFile(
-            "assets/fonts/main.ttf"
-        )
-        ) {
+    if (!font.openFromFile("assets/fonts/main.ttf")) {
         std::cout
-            << "Failed to load font.\n";
+            << "Failed to load font: "
+            << "assets/fonts/main.ttf\n";
 
         return -1;
     }
@@ -665,44 +719,38 @@ int main()
     sf::Color pendingEffectColor =
         sf::Color::White;
 
-    const sf::Vector2f
-        playerSpriteDefault(
-            180.0f,
-            240.0f
-        );
+    const sf::Vector2f playerSpriteDefault(
+        180.0f,
+        240.0f
+    );
 
-    const sf::Vector2f
-        playerBodyDefault(
-            220.0f,
-            300.0f
-        );
+    const sf::Vector2f playerBodyDefault(
+        220.0f,
+        300.0f
+    );
 
-    const sf::Vector2f
-        playerEyeDefault(
-            295.0f,
-            335.0f
-        );
+    const sf::Vector2f playerEyeDefault(
+        295.0f,
+        335.0f
+    );
 
-    const sf::Vector2f
-        enemySpriteDefault(
-            855.0f,
-            130.0f
-        );
+    const sf::Vector2f enemySpriteDefault(
+        855.0f,
+        130.0f
+    );
 
-    const sf::Vector2f
-        enemyBodyDefault(
-            900.0f,
-            190.0f
-        );
+    const sf::Vector2f enemyBodyDefault(
+        900.0f,
+        190.0f
+    );
 
-    const sf::Vector2f
-        enemyEyeDefault(
-            925.0f,
-            225.0f
-        );
+    const sf::Vector2f enemyEyeDefault(
+        925.0f,
+        225.0f
+    );
 
     // --------------------------------------------------
-    // Textures
+    // Textures and background
     // --------------------------------------------------
 
     sf::Texture playerTexture;
@@ -718,19 +766,16 @@ int main()
             "assets/images/background.png"
         );
 
-    sf::Sprite playerSprite(
-        playerTexture
-    );
-
-    sf::Sprite enemySprite(
-        enemyTexture
-    );
-
-    sf::Sprite backgroundSprite(
-        backgroundTexture
-    );
+    sf::Sprite playerSprite(playerTexture);
+    sf::Sprite enemySprite(enemyTexture);
+    sf::Sprite backgroundSprite(backgroundTexture);
 
     if (backgroundTextureLoaded) {
+        backgroundSprite.setPosition({
+            0.0f,
+            0.0f
+            });
+
         scaleSpriteToSize(
             backgroundSprite,
             backgroundTexture,
@@ -806,7 +851,7 @@ int main()
         });
 
     // --------------------------------------------------
-    // Difficulty
+    // Difficulty screen
     // --------------------------------------------------
 
     sf::Text difficultyTitle(
@@ -1039,7 +1084,7 @@ int main()
         });
 
     // --------------------------------------------------
-    // Battle visuals
+    // Creature battle visuals
     // --------------------------------------------------
 
     sf::RectangleShape ground({
@@ -1112,6 +1157,10 @@ int main()
         enemyBody
     );
 
+    // --------------------------------------------------
+    // HP bars
+    // --------------------------------------------------
+
     const float hpBarMaxWidth =
         300.0f;
 
@@ -1163,6 +1212,10 @@ int main()
         70.0f
         });
 
+    // --------------------------------------------------
+    // Move buttons
+    // --------------------------------------------------
+
     sf::RectangleShape moveButtons[4];
 
     sf::Text moveTexts[4] = {
@@ -1194,6 +1247,10 @@ int main()
             666.0f
             });
     }
+
+    // --------------------------------------------------
+    // Battle text
+    // --------------------------------------------------
 
     sf::Text battleTitle(
         font,
@@ -1228,6 +1285,31 @@ int main()
         105.0f
         });
 
+    sf::Text enemyStatusText(
+        font,
+        "Status: None",
+        20
+    );
+
+    enemyStatusText.setPosition({
+        860.0f,
+        135.0f
+        });
+
+    sf::RectangleShape enemyStatusIcon({
+        22.0f,
+        22.0f
+        });
+
+    enemyStatusIcon.setPosition({
+        1125.0f,
+        138.0f
+        });
+
+    enemyStatusIcon.setFillColor(
+        getStatusColor(Status::None)
+    );
+
     sf::Text playerNameText(
         font,
         "Player",
@@ -1250,6 +1332,31 @@ int main()
         640.0f
         });
 
+    sf::Text playerStatusText(
+        font,
+        "Status: None",
+        20
+    );
+
+    playerStatusText.setPosition({
+        440.0f,
+        610.0f
+        });
+
+    sf::RectangleShape playerStatusIcon({
+        22.0f,
+        22.0f
+        });
+
+    playerStatusIcon.setPosition({
+        650.0f,
+        613.0f
+        });
+
+    playerStatusIcon.setFillColor(
+        getStatusColor(Status::None)
+    );
+
     sf::Text battleMessage(
         font,
         "Choose a move.",
@@ -1262,7 +1369,7 @@ int main()
         });
 
     // --------------------------------------------------
-    // Effects
+    // Animation effects
     // --------------------------------------------------
 
     sf::CircleShape projectileEffect(
@@ -1306,6 +1413,10 @@ int main()
         7.0f
     );
 
+    // --------------------------------------------------
+    // UI update helpers
+    // --------------------------------------------------
+
     auto updateAllBattleUi = [&]() {
         updateBattleText(
             battle,
@@ -1323,20 +1434,24 @@ int main()
 
         updateHpBar(
             playerHpFill,
-            battle
-            .getPlayerPokemon()
-            .getHp(),
+            battle.getPlayerPokemon().getHp(),
             playerMaxHp,
             hpBarMaxWidth
         );
 
         updateHpBar(
             enemyHpFill,
-            battle
-            .getEnemyPokemon()
-            .getHp(),
+            battle.getEnemyPokemon().getHp(),
             enemyMaxHp,
             hpBarMaxWidth
+        );
+
+        updateStatusDisplay(
+            battle,
+            playerStatusText,
+            enemyStatusText,
+            playerStatusIcon,
+            enemyStatusIcon
         );
         };
 
@@ -1347,9 +1462,7 @@ int main()
             );
 
             resultMessage.setString(
-                battle
-                .getEnemyPokemon()
-                .getName() +
+                battle.getEnemyPokemon().getName() +
                 " was defeated."
             );
         }
@@ -1359,9 +1472,7 @@ int main()
             );
 
             resultMessage.setString(
-                battle
-                .getPlayerPokemon()
-                .getName() +
+                battle.getPlayerPokemon().getName() +
                 " was defeated."
             );
         }
@@ -1384,14 +1495,9 @@ int main()
             sf::Mouse::getPosition(window);
 
         sf::Vector2f mousePosition =
-            window.mapPixelToCoords(
-                mousePixel
-            );
+            window.mapPixelToCoords(mousePixel);
 
-        if (
-            currentScreen ==
-            Screen::MainMenu
-            ) {
+        if (currentScreen == Screen::MainMenu) {
             updateButtonHover(
                 startButton,
                 mousePosition
@@ -1470,23 +1576,22 @@ int main()
             );
         }
 
+        // --------------------------------------------------
+        // Event handling
+        // --------------------------------------------------
+
         while (
             const std::optional<sf::Event> event =
             window.pollEvent()
             ) {
-            if (
-                event->is<
-                sf::Event::Closed
-                >()
-                ) {
+            if (event->is<sf::Event::Closed>()) {
                 window.close();
             }
 
             if (
                 const auto* mouseButton =
                 event->getIf<
-                sf::Event::
-                MouseButtonPressed
+                sf::Event::MouseButtonPressed
                 >()
                 ) {
                 if (
@@ -1498,6 +1603,7 @@ int main()
                             mouseButton->position
                         );
 
+                    // Main menu
                     if (
                         currentScreen ==
                         Screen::MainMenu
@@ -1509,8 +1615,7 @@ int main()
                             )
                             ) {
                             currentScreen =
-                                Screen::
-                                DifficultySelect;
+                                Screen::DifficultySelect;
                         }
                         else if (
                             isButtonClicked(
@@ -1522,6 +1627,7 @@ int main()
                         }
                     }
 
+                    // Difficulty selection
                     else if (
                         currentScreen ==
                         Screen::DifficultySelect
@@ -1535,8 +1641,7 @@ int main()
                             difficulty = 1;
 
                             currentScreen =
-                                Screen::
-                                CreatureSelect;
+                                Screen::CreatureSelect;
                         }
                         else if (
                             isButtonClicked(
@@ -1547,8 +1652,7 @@ int main()
                             difficulty = 2;
 
                             currentScreen =
-                                Screen::
-                                CreatureSelect;
+                                Screen::CreatureSelect;
                         }
                         else if (
                             isButtonClicked(
@@ -1559,8 +1663,7 @@ int main()
                             difficulty = 3;
 
                             currentScreen =
-                                Screen::
-                                CreatureSelect;
+                                Screen::CreatureSelect;
                         }
                         else if (
                             isButtonClicked(
@@ -1573,15 +1676,12 @@ int main()
                         }
                     }
 
+                    // Creature selection
                     else if (
                         currentScreen ==
                         Screen::CreatureSelect
                         ) {
-                        for (
-                            int i = 0;
-                            i < 8;
-                            i++
-                            ) {
+                        for (int i = 0; i < 8; i++) {
                             if (
                                 isButtonClicked(
                                     creatureButtons[i],
@@ -1592,16 +1692,14 @@ int main()
                                     i + 1;
 
                                 int enemyChoice =
-                                    std::rand() %
-                                    8 + 1;
+                                    std::rand() % 8 + 1;
 
                                 while (
                                     enemyChoice ==
                                     playerChoice
                                     ) {
                                     enemyChoice =
-                                        std::rand() %
-                                        8 + 1;
+                                        std::rand() % 8 + 1;
                                 }
 
                                 playerCreature =
@@ -1615,12 +1713,10 @@ int main()
                                     );
 
                                 playerMaxHp =
-                                    playerCreature
-                                    .getHp();
+                                    playerCreature.getHp();
 
                                 enemyMaxHp =
-                                    enemyCreature
-                                    .getHp();
+                                    enemyCreature.getHp();
 
                                 battle = Battle(
                                     playerCreature,
@@ -1631,9 +1727,7 @@ int main()
                                 animationState =
                                     AnimationState::None;
 
-                                pendingMoveIndex =
-                                    -1;
-
+                                pendingMoveIndex = -1;
                                 pendingMoveName.clear();
 
                                 playerBody.setPosition(
@@ -1671,14 +1765,14 @@ int main()
                                 );
 
                                 currentScreen =
-                                    Screen::
-                                    BattleScreen;
+                                    Screen::BattleScreen;
 
                                 break;
                             }
                         }
                     }
 
+                    // Battle move selection
                     else if (
                         currentScreen ==
                         Screen::BattleScreen &&
@@ -1728,10 +1822,9 @@ int main()
                                     selectedMove.type
                                 );
 
-                            projectileEffect
-                                .setFillColor(
-                                    pendingEffectColor
-                                );
+                            projectileEffect.setFillColor(
+                                pendingEffectColor
+                            );
 
                             sf::Color beamColor =
                                 pendingEffectColor;
@@ -1747,10 +1840,9 @@ int main()
 
                             pulseColor.a = 210;
 
-                            statusPulse
-                                .setOutlineColor(
-                                    pulseColor
-                                );
+                            statusPulse.setOutlineColor(
+                                pulseColor
+                            );
 
                             battleMessage.setString(
                                 battle
@@ -1770,6 +1862,7 @@ int main()
                         }
                     }
 
+                    // Result screen
                     else if (
                         currentScreen ==
                         Screen::ResultScreen
@@ -1781,8 +1874,7 @@ int main()
                             )
                             ) {
                             currentScreen =
-                                Screen::
-                                DifficultySelect;
+                                Screen::DifficultySelect;
                         }
                         else if (
                             isButtonClicked(
@@ -1838,8 +1930,7 @@ int main()
 
                 if (elapsed < halfDuration) {
                     float progress =
-                        elapsed /
-                        halfDuration;
+                        elapsed / halfDuration;
 
                     setCreaturePosition(
                         playerSprite,
@@ -1864,8 +1955,7 @@ int main()
                     );
                 }
                 else if (
-                    elapsed <
-                    totalDuration
+                    elapsed < totalDuration
                     ) {
                     float progress =
                         (elapsed - halfDuration) /
@@ -1911,8 +2001,7 @@ int main()
                     updateAllBattleUi();
 
                     animationState =
-                        AnimationState::
-                        EnemyFlash;
+                        AnimationState::EnemyFlash;
 
                     animationClock.restart();
                 }
@@ -1920,8 +2009,7 @@ int main()
 
             else if (
                 animationState ==
-                AnimationState::
-                PlayerProjectile
+                AnimationState::PlayerProjectile
                 ) {
                 const float duration =
                     0.40f;
@@ -1949,8 +2037,7 @@ int main()
                     updateAllBattleUi();
 
                     animationState =
-                        AnimationState::
-                        EnemyFlash;
+                        AnimationState::EnemyFlash;
 
                     animationClock.restart();
                 }
@@ -1982,8 +2069,7 @@ int main()
                     updateAllBattleUi();
 
                     animationState =
-                        AnimationState::
-                        EnemyFlash;
+                        AnimationState::EnemyFlash;
 
                     animationClock.restart();
                 }
@@ -2007,9 +2093,7 @@ int main()
                     40.0f +
                     progress * 75.0f;
 
-                statusPulse.setRadius(
-                    radius
-                );
+                statusPulse.setRadius(radius);
 
                 statusPulse.setOrigin({
                     radius,
@@ -2024,8 +2108,7 @@ int main()
                     updateAllBattleUi();
 
                     animationState =
-                        AnimationState::
-                        EnemyFlash;
+                        AnimationState::EnemyFlash;
 
                     animationClock.restart();
                 }
@@ -2087,8 +2170,7 @@ int main()
                     updateAllBattleUi();
 
                     animationState =
-                        AnimationState::
-                        EnemyFlash;
+                        AnimationState::EnemyFlash;
 
                     animationClock.restart();
                 }
@@ -2132,8 +2214,7 @@ int main()
                         );
 
                         animationState =
-                            AnimationState::
-                            EnemyLunge;
+                            AnimationState::EnemyLunge;
 
                         animationClock.restart();
                     }
@@ -2167,8 +2248,7 @@ int main()
 
                 if (elapsed < halfDuration) {
                     float progress =
-                        elapsed /
-                        halfDuration;
+                        elapsed / halfDuration;
 
                     setCreaturePosition(
                         enemySprite,
@@ -2193,8 +2273,7 @@ int main()
                     );
                 }
                 else if (
-                    elapsed <
-                    totalDuration
+                    elapsed < totalDuration
                     ) {
                     float progress =
                         (elapsed - halfDuration) /
@@ -2236,15 +2315,13 @@ int main()
                     battle.enemyTurn();
 
                     if (!battle.isBattleOver()) {
-                        battle
-                            .applyEndRoundEffects();
+                        battle.applyEndRoundEffects();
                     }
 
                     updateAllBattleUi();
 
                     animationState =
-                        AnimationState::
-                        PlayerFlash;
+                        AnimationState::PlayerFlash;
 
                     animationClock.restart();
                 }
@@ -2285,9 +2362,7 @@ int main()
                             "Choose another move."
                         );
 
-                        pendingMoveIndex =
-                            -1;
-
+                        pendingMoveIndex = -1;
                         pendingMoveName.clear();
 
                         animationState =
@@ -2304,23 +2379,18 @@ int main()
         window.clear();
 
         if (backgroundTextureLoaded) {
-            window.draw(
-                backgroundSprite
-            );
+            window.draw(backgroundSprite);
         }
         else {
-            window.draw(
-                background
-            );
+            window.draw(background);
         }
 
-        if (
-            currentScreen ==
-            Screen::MainMenu
-            ) {
+        if (currentScreen == Screen::MainMenu) {
             window.draw(title);
+
             window.draw(startButton);
             window.draw(exitButton);
+
             window.draw(startText);
             window.draw(exitText);
         }
@@ -2329,9 +2399,7 @@ int main()
             currentScreen ==
             Screen::DifficultySelect
             ) {
-            window.draw(
-                difficultyTitle
-            );
+            window.draw(difficultyTitle);
 
             window.draw(easyButton);
             window.draw(normalButton);
@@ -2369,9 +2437,7 @@ int main()
             window.draw(ground);
 
             if (playerTextureLoaded) {
-                window.draw(
-                    playerSprite
-                );
+                window.draw(playerSprite);
             }
             else {
                 window.draw(playerBody);
@@ -2380,36 +2446,27 @@ int main()
 
             if (
                 animationState ==
-                AnimationState::
-                PlayerProjectile
+                AnimationState::PlayerProjectile
                 ) {
-                window.draw(
-                    projectileEffect
-                );
+                window.draw(projectileEffect);
             }
 
             if (
                 animationState ==
                 AnimationState::PlayerBeam
                 ) {
-                window.draw(
-                    beamEffect
-                );
+                window.draw(beamEffect);
             }
 
             if (
                 animationState ==
                 AnimationState::PlayerStatus
                 ) {
-                window.draw(
-                    statusPulse
-                );
+                window.draw(statusPulse);
             }
 
             if (enemyTextureLoaded) {
-                window.draw(
-                    enemySprite
-                );
+                window.draw(enemySprite);
             }
             else {
                 window.draw(enemyBody);
@@ -2423,20 +2480,22 @@ int main()
             window.draw(enemyHpFill);
 
             for (int i = 0; i < 4; i++) {
-                window.draw(
-                    moveButtons[i]
-                );
-
-                window.draw(
-                    moveTexts[i]
-                );
+                window.draw(moveButtons[i]);
+                window.draw(moveTexts[i]);
             }
 
             window.draw(battleTitle);
+
             window.draw(enemyNameText);
             window.draw(enemyHpText);
+            window.draw(enemyStatusText);
+            window.draw(enemyStatusIcon);
+
             window.draw(playerNameText);
             window.draw(playerHpText);
+            window.draw(playerStatusText);
+            window.draw(playerStatusIcon);
+
             window.draw(battleMessage);
         }
 
