@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+
 #include <optional>
 #include <iostream>
 #include <string>
@@ -13,7 +14,8 @@ enum class Screen {
     MainMenu,
     DifficultySelect,
     PokemonSelect,
-    BattleScreen
+    BattleScreen,
+    ResultScreen
 };
 
 bool isButtonClicked(
@@ -210,9 +212,9 @@ int main() {
         difficulty
     );
 
-    // --------------------------------------------------
+    // ==================================================
     // Common background
-    // --------------------------------------------------
+    // ==================================================
 
     sf::RectangleShape background({
         1280.0f,
@@ -223,9 +225,9 @@ int main() {
         sf::Color(32, 36, 48)
     );
 
-    // --------------------------------------------------
+    // ==================================================
     // Main menu
-    // --------------------------------------------------
+    // ==================================================
 
     sf::Text title(
         font,
@@ -300,9 +302,9 @@ int main() {
         sf::Color::White
     );
 
-    // --------------------------------------------------
+    // ==================================================
     // Difficulty selection screen
-    // --------------------------------------------------
+    // ==================================================
 
     sf::Text difficultyTitle(
         font,
@@ -435,9 +437,101 @@ int main() {
         sf::Color::White
     );
 
-    // --------------------------------------------------
-    // Pokemon selection screen
-    // --------------------------------------------------
+    // ==================================================
+    // Result screen
+    // ==================================================
+
+    sf::Text resultTitle(
+        font,
+        "Battle Result",
+        42
+    );
+
+    resultTitle.setPosition({
+        485.0f,
+        90.0f
+        });
+
+    resultTitle.setFillColor(
+        sf::Color::White
+    );
+
+    sf::Text resultMessage(
+        font,
+        "Result goes here",
+        30
+    );
+
+    resultMessage.setPosition({
+        420.0f,
+        210.0f
+        });
+
+    resultMessage.setFillColor(
+        sf::Color::White
+    );
+
+    sf::RectangleShape playAgainButton({
+        340.0f,
+        70.0f
+        });
+
+    playAgainButton.setPosition({
+        470.0f,
+        340.0f
+        });
+
+    playAgainButton.setFillColor(
+        sf::Color(90, 90, 120)
+    );
+
+    sf::Text playAgainText(
+        font,
+        "Play Again",
+        30
+    );
+
+    playAgainText.setPosition({
+        560.0f,
+        358.0f
+        });
+
+    playAgainText.setFillColor(
+        sf::Color::White
+    );
+
+    sf::RectangleShape resultMenuButton({
+        340.0f,
+        70.0f
+        });
+
+    resultMenuButton.setPosition({
+        470.0f,
+        440.0f
+        });
+
+    resultMenuButton.setFillColor(
+        sf::Color(90, 90, 120)
+    );
+
+    sf::Text resultMenuText(
+        font,
+        "Main Menu",
+        30
+    );
+
+    resultMenuText.setPosition({
+        555.0f,
+        458.0f
+        });
+
+    resultMenuText.setFillColor(
+        sf::Color::White
+    );
+
+    // ==================================================
+    // Pokémon selection screen
+    // ==================================================
 
     sf::RectangleShape pokemonButtons[8];
 
@@ -515,9 +609,9 @@ int main() {
         sf::Color::White
     );
 
-    // --------------------------------------------------
+    // ==================================================
     // Battle screen
-    // --------------------------------------------------
+    // ==================================================
 
     sf::RectangleShape ground({
         1000.0f,
@@ -837,19 +931,18 @@ int main() {
         sf::Color::White
     );
 
-    // --------------------------------------------------
+    // ==================================================
     // Main game loop
-    // --------------------------------------------------
+    // ==================================================
 
     while (window.isOpen()) {
         sf::Vector2i mousePixelPosition =
             sf::Mouse::getPosition(window);
 
         sf::Vector2f mousePosition =
-            window.mapPixelToCoords(
-                mousePixelPosition
-            );
+            window.mapPixelToCoords(mousePixelPosition);
 
+        // Main menu hover
         if (currentScreen == Screen::MainMenu) {
             updateButtonHover(
                 startButton,
@@ -862,10 +955,8 @@ int main() {
             );
         }
 
-        if (
-            currentScreen ==
-            Screen::DifficultySelect
-            ) {
+        // Difficulty hover
+        if (currentScreen == Screen::DifficultySelect) {
             updateButtonHover(
                 easyButton,
                 mousePosition
@@ -887,10 +978,8 @@ int main() {
             );
         }
 
-        if (
-            currentScreen ==
-            Screen::PokemonSelect
-            ) {
+        // Pokémon selection hover
+        if (currentScreen == Screen::PokemonSelect) {
             for (int i = 0; i < 8; i++) {
                 updateButtonHover(
                     pokemonButtons[i],
@@ -899,9 +988,9 @@ int main() {
             }
         }
 
+        // Battle button hover
         if (
-            currentScreen ==
-            Screen::BattleScreen &&
+            currentScreen == Screen::BattleScreen &&
             !battle.isBattleOver()
             ) {
             updateButtonHover(
@@ -925,6 +1014,23 @@ int main() {
             );
         }
 
+        // Result screen hover
+        if (currentScreen == Screen::ResultScreen) {
+            updateButtonHover(
+                playAgainButton,
+                mousePosition
+            );
+
+            updateButtonHover(
+                resultMenuButton,
+                mousePosition
+            );
+        }
+
+        // ==================================================
+        // Event handling
+        // ==================================================
+
         while (
             const std::optional event =
             window.pollEvent()
@@ -940,8 +1046,7 @@ int main() {
             if (
                 const auto* mouseButton =
                 event->getIf<
-                sf::Event::
-                MouseButtonPressed
+                sf::Event::MouseButtonPressed
                 >()
                 ) {
                 if (
@@ -953,14 +1058,11 @@ int main() {
                             mouseButton->position
                         );
 
-                    // ------------------------------
+                    // ------------------------------------------
                     // Main menu clicks
-                    // ------------------------------
+                    // ------------------------------------------
 
-                    if (
-                        currentScreen ==
-                        Screen::MainMenu
-                        ) {
+                    if (currentScreen == Screen::MainMenu) {
                         if (
                             isButtonClicked(
                                 startButton,
@@ -968,8 +1070,7 @@ int main() {
                             )
                             ) {
                             currentScreen =
-                                Screen::
-                                DifficultySelect;
+                                Screen::DifficultySelect;
                         }
                         else if (
                             isButtonClicked(
@@ -981,9 +1082,9 @@ int main() {
                         }
                     }
 
-                    // ------------------------------
-                    // Difficulty clicks
-                    // ------------------------------
+                    // ------------------------------------------
+                    // Difficulty selection clicks
+                    // ------------------------------------------
 
                     else if (
                         currentScreen ==
@@ -998,8 +1099,7 @@ int main() {
                             difficulty = 1;
 
                             currentScreen =
-                                Screen::
-                                PokemonSelect;
+                                Screen::PokemonSelect;
                         }
                         else if (
                             isButtonClicked(
@@ -1010,8 +1110,7 @@ int main() {
                             difficulty = 2;
 
                             currentScreen =
-                                Screen::
-                                PokemonSelect;
+                                Screen::PokemonSelect;
                         }
                         else if (
                             isButtonClicked(
@@ -1022,8 +1121,7 @@ int main() {
                             difficulty = 3;
 
                             currentScreen =
-                                Screen::
-                                PokemonSelect;
+                                Screen::PokemonSelect;
                         }
                         else if (
                             isButtonClicked(
@@ -1036,27 +1134,22 @@ int main() {
                         }
                     }
 
-                    // ------------------------------
-                    // Pokemon selection clicks
-                    // ------------------------------
+                    // ------------------------------------------
+                    // Pokémon selection clicks
+                    // ------------------------------------------
 
                     else if (
                         currentScreen ==
                         Screen::PokemonSelect
                         ) {
-                        for (
-                            int i = 0;
-                            i < 8;
-                            i++
-                            ) {
+                        for (int i = 0; i < 8; i++) {
                             if (
                                 isButtonClicked(
                                     pokemonButtons[i],
                                     clickPosition
                                 )
                                 ) {
-                                int playerChoice =
-                                    i + 1;
+                                int playerChoice = i + 1;
 
                                 int enemyChoice =
                                     std::rand() % 8 + 1;
@@ -1066,8 +1159,7 @@ int main() {
                                     playerChoice
                                     ) {
                                     enemyChoice =
-                                        std::rand() %
-                                        8 + 1;
+                                        std::rand() % 8 + 1;
                                 }
 
                                 playerPokemon =
@@ -1081,12 +1173,10 @@ int main() {
                                     );
 
                                 playerMaxHp =
-                                    playerPokemon
-                                    .getHp();
+                                    playerPokemon.getHp();
 
                                 enemyMaxHp =
-                                    enemyPokemon
-                                    .getHp();
+                                    enemyPokemon.getHp();
 
                                 battle = Battle(
                                     playerPokemon,
@@ -1131,25 +1221,23 @@ int main() {
                                 );
 
                                 currentScreen =
-                                    Screen::
-                                    BattleScreen;
+                                    Screen::BattleScreen;
 
                                 break;
                             }
                         }
                     }
 
-                    // ------------------------------
-                    // Battle clicks
-                    // ------------------------------
+                    // ------------------------------------------
+                    // Battle screen clicks
+                    // ------------------------------------------
 
                     else if (
                         currentScreen ==
                         Screen::BattleScreen &&
                         !battle.isBattleOver()
                         ) {
-                        int selectedMoveIndex =
-                            -1;
+                        int selectedMoveIndex = -1;
 
                         if (
                             isButtonClicked(
@@ -1203,26 +1291,18 @@ int main() {
                                 selectedMoveIndex
                             );
 
-                            if (
-                                !battle
-                                .isBattleOver()
-                                ) {
+                            if (!battle.isBattleOver()) {
                                 battle.enemyTurn();
                             }
 
-                            if (
-                                !battle
-                                .isBattleOver()
-                                ) {
-                                battle
-                                    .applyEndRoundEffects();
+                            if (!battle.isBattleOver()) {
+                                battle.applyEndRoundEffects();
                             }
 
                             playerHpText.setString(
                                 makeHpText(
                                     "Player",
-                                    battle
-                                    .getPlayerPokemon(),
+                                    battle.getPlayerPokemon(),
                                     playerMaxHp
                                 )
                             );
@@ -1230,8 +1310,7 @@ int main() {
                             enemyHpText.setString(
                                 makeHpText(
                                     "Enemy",
-                                    battle
-                                    .getEnemyPokemon(),
+                                    battle.getEnemyPokemon(),
                                     enemyMaxHp
                                 )
                             );
@@ -1254,32 +1333,34 @@ int main() {
                                 hpBarMaxWidth
                             );
 
-                            if (
-                                battle.isBattleOver()
-                                ) {
-                                if (
-                                    battle
-                                    .didPlayerWin()
-                                    ) {
-                                    battleMessage
-                                        .setString(
-                                            "You won! " +
-                                            battle
-                                            .getEnemyPokemon()
-                                            .getName() +
-                                            " fainted."
-                                        );
+                            if (battle.isBattleOver()) {
+                                if (battle.didPlayerWin()) {
+                                    resultTitle.setString(
+                                        "You Won!"
+                                    );
+
+                                    resultMessage.setString(
+                                        battle
+                                        .getEnemyPokemon()
+                                        .getName() +
+                                        " fainted."
+                                    );
                                 }
                                 else {
-                                    battleMessage
-                                        .setString(
-                                            "You lost! " +
-                                            battle
-                                            .getPlayerPokemon()
-                                            .getName() +
-                                            " fainted."
-                                        );
+                                    resultTitle.setString(
+                                        "You Lost!"
+                                    );
+
+                                    resultMessage.setString(
+                                        battle
+                                        .getPlayerPokemon()
+                                        .getName() +
+                                        " fainted."
+                                    );
                                 }
+
+                                currentScreen =
+                                    Screen::ResultScreen;
                             }
                             else {
                                 battleMessage.setString(
@@ -1290,22 +1371,47 @@ int main() {
                             }
                         }
                     }
+
+                    // ------------------------------------------
+                    // Result screen clicks
+                    // ------------------------------------------
+
+                    else if (
+                        currentScreen ==
+                        Screen::ResultScreen
+                        ) {
+                        if (
+                            isButtonClicked(
+                                playAgainButton,
+                                clickPosition
+                            )
+                            ) {
+                            currentScreen =
+                                Screen::DifficultySelect;
+                        }
+                        else if (
+                            isButtonClicked(
+                                resultMenuButton,
+                                clickPosition
+                            )
+                            ) {
+                            currentScreen =
+                                Screen::MainMenu;
+                        }
+                    }
                 }
             }
         }
 
-        // --------------------------------------------------
+        // ==================================================
         // Drawing
-        // --------------------------------------------------
+        // ==================================================
 
         window.clear();
 
         window.draw(background);
 
-        if (
-            currentScreen ==
-            Screen::MainMenu
-            ) {
+        if (currentScreen == Screen::MainMenu) {
             window.draw(title);
 
             window.draw(startButton);
@@ -1387,6 +1493,20 @@ int main() {
             window.draw(moveText2);
             window.draw(moveText3);
             window.draw(moveText4);
+        }
+
+        else if (
+            currentScreen ==
+            Screen::ResultScreen
+            ) {
+            window.draw(resultTitle);
+            window.draw(resultMessage);
+
+            window.draw(playAgainButton);
+            window.draw(resultMenuButton);
+
+            window.draw(playAgainText);
+            window.draw(resultMenuText);
         }
 
         window.display();
