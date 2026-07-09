@@ -1,5 +1,5 @@
 #include <SFML/Graphics.hpp>
-
+#include <vector>
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -171,6 +171,152 @@ Pokemon getCreatureByChoice(int choice)
     if (choice == 8) return getSkywyrm();
 
     return getVoltbit();
+}
+
+// ==================================================
+// Battle log helpers
+// ==================================================
+
+void addBattleLog(
+    std::vector<std::string>& battleLog,
+    const std::string& message
+)
+{
+    if (message.empty()) {
+        return;
+    }
+
+    battleLog.push_back(message);
+
+    const std::size_t maximumLogLines = 5;
+
+    while (battleLog.size() > maximumLogLines) {
+        battleLog.erase(battleLog.begin());
+    }
+}
+
+void updateBattleLogTexts(
+    const std::vector<std::string>& battleLog,
+    std::vector<sf::Text>& battleLogTexts
+)
+{
+    for (
+        std::size_t i = 0;
+        i < battleLogTexts.size();
+        i++
+        ) {
+        if (i < battleLog.size()) {
+            battleLogTexts[i].setString(
+                battleLog[i]
+            );
+        }
+        else {
+            battleLogTexts[i].setString("");
+        }
+    }
+}
+
+std::string getStatusEventText(Status status)
+{
+    if (status == Status::Burn) {
+        return "burned";
+    }
+
+    if (status == Status::Poison) {
+        return "poisoned";
+    }
+
+    if (status == Status::Sleep) {
+        return "asleep";
+    }
+
+    if (status == Status::Paralysis) {
+        return "paralyzed";
+    }
+
+    return "affected";
+}
+
+std::string getStatusConditionName(Status status)
+{
+    if (status == Status::Burn) {
+        return "burn";
+    }
+
+    if (status == Status::Poison) {
+        return "poison";
+    }
+
+    if (status == Status::Sleep) {
+        return "sleep";
+    }
+
+    if (status == Status::Paralysis) {
+        return "paralysis";
+    }
+
+    return "status effect";
+}
+
+void addMoveResultToBattleLog(
+    std::vector<std::string>& battleLog,
+    const std::string& targetName,
+    int hpBefore,
+    int hpAfter,
+    Status statusBefore,
+    Status statusAfter,
+    const Move& move
+)
+{
+    int damageTaken =
+        hpBefore - hpAfter;
+
+    bool damageLogged = false;
+    bool statusLogged = false;
+
+    if (damageTaken > 0) {
+        addBattleLog(
+            battleLog,
+            targetName +
+            " took " +
+            std::to_string(damageTaken) +
+            " damage."
+        );
+
+        damageLogged = true;
+    }
+
+    if (
+        statusBefore == Status::None &&
+        statusAfter != Status::None
+        ) {
+        addBattleLog(
+            battleLog,
+            targetName +
+            " became " +
+            getStatusEventText(statusAfter) +
+            "."
+        );
+
+        statusLogged = true;
+    }
+
+    if (!damageLogged && !statusLogged) {
+        if (move.damage > 0) {
+            addBattleLog(
+                battleLog,
+                move.name +
+                " caused no damage."
+            );
+        }
+        else {
+            addBattleLog(
+                battleLog,
+                move.name +
+                " had no visible effect."
+            );
+        }
+    }
 }
 
 // ==================================================
@@ -2645,6 +2791,8 @@ int main()
     Screen currentScreen =
         Screen::MainMenu;
 
+    std::vector<std::string> battleLog;
+
     int difficulty = 2;
 
     Pokemon playerCreature =
@@ -2676,6 +2824,7 @@ int main()
     sf::Clock animationClock;
 
     Move activeMove{};
+
     MoveVisual activeVisual =
         MoveVisual::Generic;
 
@@ -3471,6 +3620,88 @@ int main()
         sf::Color::White
     );
 
+    // --------------------------------------------------
+    // Battle log panel
+    // --------------------------------------------------
+
+    sf::RectangleShape battleLogPanel({
+        490.0f,
+        145.0f
+        });
+
+    battleLogPanel.setPosition({
+        395.0f,
+        415.0f
+        });
+
+    battleLogPanel.setFillColor(
+        sf::Color(
+            20,
+            24,
+            34,
+            205
+        )
+    );
+
+    battleLogPanel.setOutlineThickness(
+        2.0f
+    );
+
+    battleLogPanel.setOutlineColor(
+        sf::Color(
+            120,
+            125,
+            150,
+            220
+        )
+    );
+
+    sf::Text battleLogTitle(
+        font,
+        "Battle Log",
+        20
+    );
+
+    battleLogTitle.setPosition({
+        415.0f,
+        424.0f
+        });
+
+    battleLogTitle.setFillColor(
+        sf::Color::White
+    );
+
+    std::vector<sf::Text> battleLogTexts;
+
+    battleLogTexts.reserve(5);
+
+    for (int i = 0; i < 5; i++) {
+        sf::Text logLine(
+            font,
+            "",
+            16
+        );
+
+        logLine.setPosition({
+            415.0f,
+            452.0f +
+                static_cast<float>(i) *
+                20.0f
+            });
+
+        logLine.setFillColor(
+            sf::Color(
+                225,
+                225,
+                230
+            )
+        );
+
+        battleLogTexts.push_back(
+            logLine
+        );
+    }
+
     // ==================================================
     // Local helper lambdas
     // ==================================================
@@ -3611,6 +3842,7 @@ int main()
             resetCreatureVisualState();
 
             activeMove = move;
+
             activeVisual =
                 getMoveVisual(move.name);
 
@@ -3631,33 +3863,165 @@ int main()
             impactApplied = false;
             animationActive = true;
 
+            std::string attackerName;
+
             if (playerIsAttacking) {
-                battleMessage.setString(
+                attackerName =
                     battle
                     .getPlayerPokemon()
-                    .getName() +
-                    " used " +
-                    activeMove.name +
-                    "!"
-                );
+                    .getName();
             }
             else {
-                battleMessage.setString(
+                attackerName =
                     battle
                     .getEnemyPokemon()
-                    .getName() +
-                    " used " +
-                    activeMove.name +
-                    "!"
-                );
+                    .getName();
             }
+
+            std::string actionMessage =
+                attackerName +
+                " used " +
+                activeMove.name +
+                ".";
+
+            battleMessage.setString(
+                attackerName +
+                " used " +
+                activeMove.name +
+                "!"
+            );
+
+            addBattleLog(
+                battleLog,
+                actionMessage
+            );
+
+            updateBattleLogTexts(
+                battleLog,
+                battleLogTexts
+            );
 
             animationClock.restart();
         };
 
     auto finishRoundAfterEnemy = [&]() {
         if (!battle.isBattleOver()) {
+            int playerHpBeforeStatus =
+                battle
+                .getPlayerPokemon()
+                .getHp();
+
+            int enemyHpBeforeStatus =
+                battle
+                .getEnemyPokemon()
+                .getHp();
+
+            Status playerStatusBefore =
+                battle
+                .getPlayerPokemon()
+                .getStatus();
+
+            Status enemyStatusBefore =
+                battle
+                .getEnemyPokemon()
+                .getStatus();
+
             battle.applyEndRoundEffects();
+
+            int playerHpAfterStatus =
+                battle
+                .getPlayerPokemon()
+                .getHp();
+
+            int enemyHpAfterStatus =
+                battle
+                .getEnemyPokemon()
+                .getHp();
+
+            Status playerStatusAfter =
+                battle
+                .getPlayerPokemon()
+                .getStatus();
+
+            Status enemyStatusAfter =
+                battle
+                .getEnemyPokemon()
+                .getStatus();
+
+            int playerStatusDamage =
+                playerHpBeforeStatus -
+                playerHpAfterStatus;
+
+            int enemyStatusDamage =
+                enemyHpBeforeStatus -
+                enemyHpAfterStatus;
+
+            if (playerStatusDamage > 0) {
+                addBattleLog(
+                    battleLog,
+                    battle
+                    .getPlayerPokemon()
+                    .getName() +
+                    " took " +
+                    std::to_string(
+                        playerStatusDamage
+                    ) +
+                    " status damage."
+                );
+            }
+
+            if (enemyStatusDamage > 0) {
+                addBattleLog(
+                    battleLog,
+                    battle
+                    .getEnemyPokemon()
+                    .getName() +
+                    " took " +
+                    std::to_string(
+                        enemyStatusDamage
+                    ) +
+                    " status damage."
+                );
+            }
+
+            if (
+                playerStatusBefore != Status::None &&
+                playerStatusAfter == Status::None
+                ) {
+                addBattleLog(
+                    battleLog,
+                    battle
+                    .getPlayerPokemon()
+                    .getName() +
+                    " recovered from " +
+                    getStatusConditionName(
+                        playerStatusBefore
+                    ) +
+                    "."
+                );
+            }
+
+            if (
+                enemyStatusBefore != Status::None &&
+                enemyStatusAfter == Status::None
+                ) {
+                addBattleLog(
+                    battleLog,
+                    battle
+                    .getEnemyPokemon()
+                    .getName() +
+                    " recovered from " +
+                    getStatusConditionName(
+                        enemyStatusBefore
+                    ) +
+                    "."
+                );
+            }
+
+            updateBattleLogTexts(
+                battleLog,
+                battleLogTexts
+            );
         }
 
         refreshBattleUi();
@@ -3688,11 +4052,24 @@ int main()
             battle.prepareEnemyTurn();
 
         if (!enemyCanAttack) {
-            battleMessage.setString(
+            std::string skippedMessage =
                 battle
                 .getEnemyPokemon()
                 .getName() +
-                " could not attack."
+                " could not attack.";
+
+            battleMessage.setString(
+                skippedMessage
+            );
+
+            addBattleLog(
+                battleLog,
+                skippedMessage
+            );
+
+            updateBattleLogTexts(
+                battleLog,
+                battleLogTexts
             );
 
             finishRoundAfterEnemy();
@@ -3970,6 +4347,26 @@ int main()
                         difficulty
                     );
 
+                    battleLog.clear();
+
+                    addBattleLog(
+                        battleLog,
+                        "Battle started: " +
+                        battle
+                        .getPlayerPokemon()
+                        .getName() +
+                        " vs " +
+                        battle
+                        .getEnemyPokemon()
+                        .getName() +
+                        "."
+                    );
+
+                    updateBattleLogTexts(
+                        battleLog,
+                        battleLogTexts
+                    );
+
                     setupCreatureVisuals(
                         battle,
                         playerTexture,
@@ -4089,8 +4486,6 @@ int main()
                     activeMoveDuration
                 );
 
-            // Reset every frame before applying
-            // move-specific movement and colors.
             resetCreatureVisualState();
 
             float direction =
@@ -4137,10 +4532,6 @@ int main()
                     ? -9.0f
                     : 9.0f;
             }
-
-            // ------------------------------------------
-            // Attacker movement
-            // ------------------------------------------
 
             bool strongLunge =
                 activeVisual ==
@@ -4368,7 +4759,6 @@ int main()
                 }
             }
 
-            // Phantom Dive fades while passing through.
             if (
                 activeVisual ==
                 MoveVisual::PhantomDive
@@ -4415,7 +4805,6 @@ int main()
                 }
             }
 
-            // Flashstep partially disappears.
             if (
                 activeVisual ==
                 MoveVisual::Flashstep &&
@@ -4454,10 +4843,6 @@ int main()
                     );
                 }
             }
-
-            // ------------------------------------------
-            // Target movement and tint
-            // ------------------------------------------
 
             bool targetShouldShake =
                 progress >=
@@ -4522,7 +4907,6 @@ int main()
                         activeMove.type
                     );
 
-                // Temporary scorched appearance.
                 if (
                     activeVisual ==
                     MoveVisual::ArcPounce ||
@@ -4536,8 +4920,6 @@ int main()
                             35
                         );
                 }
-
-                // Bright electric impact flash.
                 else if (
                     activeMove.type ==
                     Type::Electric
@@ -4549,8 +4931,6 @@ int main()
                             120
                         );
                 }
-
-                // Water impact tint.
                 else if (
                     activeMove.type ==
                     Type::Water
@@ -4562,8 +4942,6 @@ int main()
                             255
                         );
                 }
-
-                // Ghost and dark tint.
                 else if (
                     activeMove.type ==
                     Type::Ghost ||
@@ -4605,16 +4983,78 @@ int main()
                 progress >=
                 activeImpactProgress
                 ) {
+                Pokemon& target =
+                    playerIsAttacking
+                    ? battle.getEnemyPokemon()
+                    : battle.getPlayerPokemon();
+
+                std::string targetName =
+                    target.getName();
+
+                int targetHpBefore =
+                    target.getHp();
+
+                Status targetStatusBefore =
+                    target.getStatus();
+
+                bool attackWasSkipped = false;
+
                 if (playerIsAttacking) {
+                    int skippedTurnsBefore =
+                        battle
+                        .getStats()
+                        .playerTurnsSkipped;
+
                     battle.playerAttack(
                         activePlayerMoveIndex
                     );
+
+                    int skippedTurnsAfter =
+                        battle
+                        .getStats()
+                        .playerTurnsSkipped;
+
+                    attackWasSkipped =
+                        skippedTurnsAfter >
+                        skippedTurnsBefore;
                 }
                 else {
                     battle.executeEnemyMove(
                         activeMove
                     );
                 }
+
+                int targetHpAfter =
+                    target.getHp();
+
+                Status targetStatusAfter =
+                    target.getStatus();
+
+                if (attackWasSkipped) {
+                    addBattleLog(
+                        battleLog,
+                        battle
+                        .getPlayerPokemon()
+                        .getName() +
+                        " could not attack."
+                    );
+                }
+                else {
+                    addMoveResultToBattleLog(
+                        battleLog,
+                        targetName,
+                        targetHpBefore,
+                        targetHpAfter,
+                        targetStatusBefore,
+                        targetStatusAfter,
+                        activeMove
+                    );
+                }
+
+                updateBattleLogTexts(
+                    battleLog,
+                    battleLogTexts
+                );
 
                 impactApplied = true;
 
@@ -4716,7 +5156,6 @@ int main()
             ) {
             window.draw(ground);
 
-            // Effects behind sprites.
             if (
                 animationActive &&
                 (
@@ -4756,7 +5195,6 @@ int main()
                 window.draw(enemyEye);
             }
 
-            // All other effects draw over sprites.
             if (
                 animationActive &&
                 activeVisual !=
@@ -4800,6 +5238,19 @@ int main()
             window.draw(playerHpText);
             window.draw(playerStatusText);
             window.draw(playerStatusIcon);
+
+            window.draw(battleLogPanel);
+            window.draw(battleLogTitle);
+
+            for (
+                std::size_t i = 0;
+                i < battleLogTexts.size();
+                i++
+                ) {
+                window.draw(
+                    battleLogTexts[i]
+                );
+            }
 
             window.draw(battleMessage);
         }
