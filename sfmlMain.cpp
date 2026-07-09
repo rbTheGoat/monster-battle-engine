@@ -5,6 +5,7 @@
 #include <string>
 #include <cstdlib>
 #include <ctime>
+#include <filesystem>
 
 #include "pokemon.h"
 #include "pokemonDatabase.h"
@@ -17,6 +18,10 @@ enum class Screen {
     BattleScreen,
     ResultScreen
 };
+
+// --------------------------------------------------
+// General button helpers
+// --------------------------------------------------
 
 bool isButtonClicked(
     sf::RectangleShape& button,
@@ -37,6 +42,10 @@ void updateButtonHover(
     }
 }
 
+// --------------------------------------------------
+// Pokémon creation
+// --------------------------------------------------
+
 Pokemon getPokemonByChoice(int choice) {
     if (choice == 1) return getPikachu();
     if (choice == 2) return getCharmander();
@@ -49,6 +58,10 @@ Pokemon getPokemonByChoice(int choice) {
 
     return getPikachu();
 }
+
+// --------------------------------------------------
+// HP helpers
+// --------------------------------------------------
 
 void updateHpBar(
     sf::RectangleShape& hpFill,
@@ -171,9 +184,220 @@ void updateBattleText(
     );
 }
 
+// --------------------------------------------------
+// Texture and sprite helpers
+// --------------------------------------------------
+
+bool loadPixelTexture(
+    sf::Texture& texture,
+    const std::string& path
+) {
+    // Missing images are allowed because we have fallback rectangles.
+    if (!std::filesystem::exists(path)) {
+        return false;
+    }
+
+    if (!texture.loadFromFile(path)) {
+        std::cout
+            << "Failed to load texture: "
+            << path
+            << "\n";
+
+        return false;
+    }
+
+    // Prevents pixel art from becoming blurry.
+    texture.setSmooth(false);
+
+    return true;
+}
+
+void scaleSpriteToSize(
+    sf::Sprite& sprite,
+    sf::Texture& texture,
+    float targetWidth,
+    float targetHeight
+) {
+    sf::Vector2u textureSize = texture.getSize();
+
+    if (textureSize.x == 0 || textureSize.y == 0) {
+        return;
+    }
+
+    float scaleX =
+        targetWidth /
+        static_cast<float>(textureSize.x);
+
+    float scaleY =
+        targetHeight /
+        static_cast<float>(textureSize.y);
+
+    sprite.setScale({
+        scaleX,
+        scaleY
+        });
+}
+
+std::string getPokemonImagePath(
+    const std::string& pokemonName
+) {
+    if (pokemonName == "Pikachu") {
+        return "assets/images/pikachu.png";
+    }
+
+    if (pokemonName == "Charmander") {
+        return "assets/images/charmander.png";
+    }
+
+    if (pokemonName == "Bulbasaur") {
+        return "assets/images/bulbasaur.png";
+    }
+
+    if (pokemonName == "Squirtle") {
+        return "assets/images/squirtle.png";
+    }
+
+    if (pokemonName == "Eevee") {
+        return "assets/images/eevee.png";
+    }
+
+    if (pokemonName == "Gengar") {
+        return "assets/images/gengar.png";
+    }
+
+    if (pokemonName == "Lucario") {
+        return "assets/images/lucario.png";
+    }
+
+    if (pokemonName == "Dragonite") {
+        return "assets/images/dragonite.png";
+    }
+
+    return "";
+}
+
+sf::Color getPokemonFallbackColor(
+    const std::string& pokemonName
+) {
+    if (pokemonName == "Pikachu") {
+        return sf::Color(240, 210, 70);
+    }
+
+    if (pokemonName == "Charmander") {
+        return sf::Color(230, 95, 55);
+    }
+
+    if (pokemonName == "Bulbasaur") {
+        return sf::Color(90, 180, 90);
+    }
+
+    if (pokemonName == "Squirtle") {
+        return sf::Color(80, 170, 240);
+    }
+
+    if (pokemonName == "Eevee") {
+        return sf::Color(170, 120, 75);
+    }
+
+    if (pokemonName == "Gengar") {
+        return sf::Color(120, 80, 170);
+    }
+
+    if (pokemonName == "Lucario") {
+        return sf::Color(70, 100, 180);
+    }
+
+    if (pokemonName == "Dragonite") {
+        return sf::Color(230, 160, 80);
+    }
+
+    return sf::Color(180, 180, 180);
+}
+
+void setupPokemonVisuals(
+    Battle& battle,
+    sf::Texture& playerTexture,
+    sf::Texture& enemyTexture,
+    sf::Sprite& playerSprite,
+    sf::Sprite& enemySprite,
+    bool& playerTextureLoaded,
+    bool& enemyTextureLoaded,
+    sf::RectangleShape& playerBody,
+    sf::RectangleShape& enemyBody
+) {
+    std::string playerName =
+        battle.getPlayerPokemon().getName();
+
+    std::string enemyName =
+        battle.getEnemyPokemon().getName();
+
+    playerTextureLoaded = loadPixelTexture(
+        playerTexture,
+        getPokemonImagePath(playerName)
+    );
+
+    enemyTextureLoaded = loadPixelTexture(
+        enemyTexture,
+        getPokemonImagePath(enemyName)
+    );
+
+    // These colors are used when PNG files do not exist.
+    playerBody.setFillColor(
+        getPokemonFallbackColor(playerName)
+    );
+
+    enemyBody.setFillColor(
+        getPokemonFallbackColor(enemyName)
+    );
+
+    if (playerTextureLoaded) {
+        playerSprite.setTexture(
+            playerTexture,
+            true
+        );
+
+        playerSprite.setPosition({
+            190.0f,
+            260.0f
+            });
+
+        scaleSpriteToSize(
+            playerSprite,
+            playerTexture,
+            180.0f,
+            180.0f
+        );
+    }
+
+    if (enemyTextureLoaded) {
+        enemySprite.setTexture(
+            enemyTexture,
+            true
+        );
+
+        enemySprite.setPosition({
+            870.0f,
+            150.0f
+            });
+
+        scaleSpriteToSize(
+            enemySprite,
+            enemyTexture,
+            180.0f,
+            180.0f
+        );
+    }
+}
+
+// --------------------------------------------------
+// Main
+// --------------------------------------------------
+
 int main() {
     std::srand(
-        static_cast<unsigned int>(std::time(nullptr))
+        static_cast<unsigned int>(
+            std::time(nullptr)
+            )
     );
 
     sf::RenderWindow window(
@@ -212,9 +436,44 @@ int main() {
         difficulty
     );
 
-    // ==================================================
-    // Common background
-    // ==================================================
+    // --------------------------------------------------
+    // Textures and sprites
+    // --------------------------------------------------
+
+    sf::Texture playerTexture;
+    sf::Texture enemyTexture;
+    sf::Texture backgroundTexture;
+
+    bool playerTextureLoaded = false;
+    bool enemyTextureLoaded = false;
+
+    bool backgroundTextureLoaded =
+        loadPixelTexture(
+            backgroundTexture,
+            "assets/images/background.png"
+        );
+
+    sf::Sprite playerSprite(playerTexture);
+    sf::Sprite enemySprite(enemyTexture);
+    sf::Sprite backgroundSprite(backgroundTexture);
+
+    if (backgroundTextureLoaded) {
+        backgroundSprite.setPosition({
+            0.0f,
+            0.0f
+            });
+
+        scaleSpriteToSize(
+            backgroundSprite,
+            backgroundTexture,
+            1280.0f,
+            720.0f
+        );
+    }
+
+    // --------------------------------------------------
+    // Fallback background
+    // --------------------------------------------------
 
     sf::RectangleShape background({
         1280.0f,
@@ -225,9 +484,9 @@ int main() {
         sf::Color(32, 36, 48)
     );
 
-    // ==================================================
+    // --------------------------------------------------
     // Main menu
-    // ==================================================
+    // --------------------------------------------------
 
     sf::Text title(
         font,
@@ -240,9 +499,7 @@ int main() {
         70.0f
         });
 
-    title.setFillColor(
-        sf::Color::White
-    );
+    title.setFillColor(sf::Color::White);
 
     sf::RectangleShape startButton({
         340.0f,
@@ -269,9 +526,7 @@ int main() {
         278.0f
         });
 
-    startText.setFillColor(
-        sf::Color::White
-    );
+    startText.setFillColor(sf::Color::White);
 
     sf::RectangleShape exitButton({
         340.0f,
@@ -298,13 +553,11 @@ int main() {
         378.0f
         });
 
-    exitText.setFillColor(
-        sf::Color::White
-    );
+    exitText.setFillColor(sf::Color::White);
 
-    // ==================================================
-    // Difficulty selection screen
-    // ==================================================
+    // --------------------------------------------------
+    // Difficulty screen
+    // --------------------------------------------------
 
     sf::Text difficultyTitle(
         font,
@@ -317,9 +570,7 @@ int main() {
         80.0f
         });
 
-    difficultyTitle.setFillColor(
-        sf::Color::White
-    );
+    difficultyTitle.setFillColor(sf::Color::White);
 
     sf::RectangleShape easyButton({
         420.0f,
@@ -346,9 +597,7 @@ int main() {
         240.0f
         });
 
-    easyText.setFillColor(
-        sf::Color::White
-    );
+    easyText.setFillColor(sf::Color::White);
 
     sf::RectangleShape normalButton({
         420.0f,
@@ -375,9 +624,7 @@ int main() {
         340.0f
         });
 
-    normalText.setFillColor(
-        sf::Color::White
-    );
+    normalText.setFillColor(sf::Color::White);
 
     sf::RectangleShape hardButton({
         420.0f,
@@ -404,9 +651,7 @@ int main() {
         440.0f
         });
 
-    hardText.setFillColor(
-        sf::Color::White
-    );
+    hardText.setFillColor(sf::Color::White);
 
     sf::RectangleShape backButton({
         220.0f,
@@ -433,13 +678,11 @@ int main() {
         53.0f
         });
 
-    backText.setFillColor(
-        sf::Color::White
-    );
+    backText.setFillColor(sf::Color::White);
 
-    // ==================================================
+    // --------------------------------------------------
     // Result screen
-    // ==================================================
+    // --------------------------------------------------
 
     sf::Text resultTitle(
         font,
@@ -452,9 +695,7 @@ int main() {
         90.0f
         });
 
-    resultTitle.setFillColor(
-        sf::Color::White
-    );
+    resultTitle.setFillColor(sf::Color::White);
 
     sf::Text resultMessage(
         font,
@@ -467,9 +708,7 @@ int main() {
         210.0f
         });
 
-    resultMessage.setFillColor(
-        sf::Color::White
-    );
+    resultMessage.setFillColor(sf::Color::White);
 
     sf::RectangleShape playAgainButton({
         340.0f,
@@ -496,9 +735,7 @@ int main() {
         358.0f
         });
 
-    playAgainText.setFillColor(
-        sf::Color::White
-    );
+    playAgainText.setFillColor(sf::Color::White);
 
     sf::RectangleShape resultMenuButton({
         340.0f,
@@ -525,13 +762,11 @@ int main() {
         458.0f
         });
 
-    resultMenuText.setFillColor(
-        sf::Color::White
-    );
+    resultMenuText.setFillColor(sf::Color::White);
 
-    // ==================================================
-    // Pokémon selection screen
-    // ==================================================
+    // --------------------------------------------------
+    // Pokémon selection
+    // --------------------------------------------------
 
     sf::RectangleShape pokemonButtons[8];
 
@@ -590,9 +825,7 @@ int main() {
         70.0f
         });
 
-    selectTitle.setFillColor(
-        sf::Color::White
-    );
+    selectTitle.setFillColor(sf::Color::White);
 
     sf::Text selectHint(
         font,
@@ -605,13 +838,11 @@ int main() {
         610.0f
         });
 
-    selectHint.setFillColor(
-        sf::Color::White
-    );
+    selectHint.setFillColor(sf::Color::White);
 
-    // ==================================================
+    // --------------------------------------------------
     // Battle screen
-    // ==================================================
+    // --------------------------------------------------
 
     sf::RectangleShape ground({
         1000.0f,
@@ -637,10 +868,6 @@ int main() {
         300.0f
         });
 
-    playerBody.setFillColor(
-        sf::Color(240, 210, 70)
-    );
-
     sf::RectangleShape playerEye({
         20.0f,
         20.0f
@@ -651,9 +878,7 @@ int main() {
         335.0f
         });
 
-    playerEye.setFillColor(
-        sf::Color::Black
-    );
+    playerEye.setFillColor(sf::Color::Black);
 
     sf::RectangleShape enemyBody({
         120.0f,
@@ -665,10 +890,6 @@ int main() {
         190.0f
         });
 
-    enemyBody.setFillColor(
-        sf::Color(80, 170, 240)
-    );
-
     sf::RectangleShape enemyEye({
         20.0f,
         20.0f
@@ -679,8 +900,18 @@ int main() {
         225.0f
         });
 
-    enemyEye.setFillColor(
-        sf::Color::Black
+    enemyEye.setFillColor(sf::Color::Black);
+
+    setupPokemonVisuals(
+        battle,
+        playerTexture,
+        enemyTexture,
+        playerSprite,
+        enemySprite,
+        playerTextureLoaded,
+        enemyTextureLoaded,
+        playerBody,
+        enemyBody
     );
 
     const float hpBarMaxWidth = 300.0f;
@@ -709,10 +940,6 @@ int main() {
         610.0f
         });
 
-    playerHpFill.setFillColor(
-        sf::Color(80, 220, 100)
-    );
-
     sf::RectangleShape enemyHpBack({
         hpBarMaxWidth,
         28.0f
@@ -736,10 +963,6 @@ int main() {
         860.0f,
         70.0f
         });
-
-    enemyHpFill.setFillColor(
-        sf::Color(80, 220, 100)
-    );
 
     sf::RectangleShape moveButton1({
         260.0f,
@@ -792,13 +1015,11 @@ int main() {
         20.0f
         });
 
-    battleTitle.setFillColor(
-        sf::Color::White
-    );
+    battleTitle.setFillColor(sf::Color::White);
 
     sf::Text enemyNameText(
         font,
-        "Enemy: Squirtle",
+        "Enemy",
         24
     );
 
@@ -807,9 +1028,7 @@ int main() {
         35.0f
         });
 
-    enemyNameText.setFillColor(
-        sf::Color::White
-    );
+    enemyNameText.setFillColor(sf::Color::White);
 
     sf::Text enemyHpText(
         font,
@@ -822,13 +1041,11 @@ int main() {
         105.0f
         });
 
-    enemyHpText.setFillColor(
-        sf::Color::White
-    );
+    enemyHpText.setFillColor(sf::Color::White);
 
     sf::Text playerNameText(
         font,
-        "Player: Pikachu",
+        "Player",
         24
     );
 
@@ -837,9 +1054,7 @@ int main() {
         575.0f
         });
 
-    playerNameText.setFillColor(
-        sf::Color::White
-    );
+    playerNameText.setFillColor(sf::Color::White);
 
     sf::Text playerHpText(
         font,
@@ -852,9 +1067,7 @@ int main() {
         640.0f
         });
 
-    playerHpText.setFillColor(
-        sf::Color::White
-    );
+    playerHpText.setFillColor(sf::Color::White);
 
     sf::Text battleMessage(
         font,
@@ -867,118 +1080,77 @@ int main() {
         585.0f
         });
 
-    battleMessage.setFillColor(
-        sf::Color::White
+    battleMessage.setFillColor(sf::Color::White);
+
+    sf::Text moveText1(font, "Move 1", 22);
+    moveText1.setPosition({ 105.0f, 666.0f });
+    moveText1.setFillColor(sf::Color::White);
+
+    sf::Text moveText2(font, "Move 2", 22);
+    moveText2.setPosition({ 385.0f, 666.0f });
+    moveText2.setFillColor(sf::Color::White);
+
+    sf::Text moveText3(font, "Move 3", 22);
+    moveText3.setPosition({ 665.0f, 666.0f });
+    moveText3.setFillColor(sf::Color::White);
+
+    sf::Text moveText4(font, "Move 4", 22);
+    moveText4.setPosition({ 945.0f, 666.0f });
+    moveText4.setFillColor(sf::Color::White);
+
+    updateBattleText(
+        battle,
+        playerNameText,
+        enemyNameText,
+        playerHpText,
+        enemyHpText,
+        moveText1,
+        moveText2,
+        moveText3,
+        moveText4,
+        playerMaxHp,
+        enemyMaxHp
     );
 
-    sf::Text moveText1(
-        font,
-        "Move 1",
-        22
+    updateHpBar(
+        playerHpFill,
+        battle.getPlayerPokemon().getHp(),
+        playerMaxHp,
+        hpBarMaxWidth
     );
 
-    moveText1.setPosition({
-        105.0f,
-        666.0f
-        });
-
-    moveText1.setFillColor(
-        sf::Color::White
+    updateHpBar(
+        enemyHpFill,
+        battle.getEnemyPokemon().getHp(),
+        enemyMaxHp,
+        hpBarMaxWidth
     );
 
-    sf::Text moveText2(
-        font,
-        "Move 2",
-        22
-    );
-
-    moveText2.setPosition({
-        385.0f,
-        666.0f
-        });
-
-    moveText2.setFillColor(
-        sf::Color::White
-    );
-
-    sf::Text moveText3(
-        font,
-        "Move 3",
-        22
-    );
-
-    moveText3.setPosition({
-        665.0f,
-        666.0f
-        });
-
-    moveText3.setFillColor(
-        sf::Color::White
-    );
-
-    sf::Text moveText4(
-        font,
-        "Move 4",
-        22
-    );
-
-    moveText4.setPosition({
-        945.0f,
-        666.0f
-        });
-
-    moveText4.setFillColor(
-        sf::Color::White
-    );
-
-    // ==================================================
+    // --------------------------------------------------
     // Main game loop
-    // ==================================================
+    // --------------------------------------------------
 
     while (window.isOpen()) {
         sf::Vector2i mousePixelPosition =
             sf::Mouse::getPosition(window);
 
         sf::Vector2f mousePosition =
-            window.mapPixelToCoords(mousePixelPosition);
+            window.mapPixelToCoords(
+                mousePixelPosition
+            );
 
-        // Main menu hover
         if (currentScreen == Screen::MainMenu) {
-            updateButtonHover(
-                startButton,
-                mousePosition
-            );
-
-            updateButtonHover(
-                exitButton,
-                mousePosition
-            );
+            updateButtonHover(startButton, mousePosition);
+            updateButtonHover(exitButton, mousePosition);
         }
 
-        // Difficulty hover
         if (currentScreen == Screen::DifficultySelect) {
-            updateButtonHover(
-                easyButton,
-                mousePosition
-            );
-
-            updateButtonHover(
-                normalButton,
-                mousePosition
-            );
-
-            updateButtonHover(
-                hardButton,
-                mousePosition
-            );
-
-            updateButtonHover(
-                backButton,
-                mousePosition
-            );
+            updateButtonHover(easyButton, mousePosition);
+            updateButtonHover(normalButton, mousePosition);
+            updateButtonHover(hardButton, mousePosition);
+            updateButtonHover(backButton, mousePosition);
         }
 
-        // Pokémon selection hover
         if (currentScreen == Screen::PokemonSelect) {
             for (int i = 0; i < 8; i++) {
                 updateButtonHover(
@@ -988,33 +1160,16 @@ int main() {
             }
         }
 
-        // Battle button hover
         if (
             currentScreen == Screen::BattleScreen &&
             !battle.isBattleOver()
             ) {
-            updateButtonHover(
-                moveButton1,
-                mousePosition
-            );
-
-            updateButtonHover(
-                moveButton2,
-                mousePosition
-            );
-
-            updateButtonHover(
-                moveButton3,
-                mousePosition
-            );
-
-            updateButtonHover(
-                moveButton4,
-                mousePosition
-            );
+            updateButtonHover(moveButton1, mousePosition);
+            updateButtonHover(moveButton2, mousePosition);
+            updateButtonHover(moveButton3, mousePosition);
+            updateButtonHover(moveButton4, mousePosition);
         }
 
-        // Result screen hover
         if (currentScreen == Screen::ResultScreen) {
             updateButtonHover(
                 playAgainButton,
@@ -1027,19 +1182,11 @@ int main() {
             );
         }
 
-        // ==================================================
-        // Event handling
-        // ==================================================
-
         while (
             const std::optional event =
             window.pollEvent()
             ) {
-            if (
-                event->is<
-                sf::Event::Closed
-                >()
-                ) {
+            if (event->is<sf::Event::Closed>()) {
                 window.close();
             }
 
@@ -1058,10 +1205,7 @@ int main() {
                             mouseButton->position
                         );
 
-                    // ------------------------------------------
-                    // Main menu clicks
-                    // ------------------------------------------
-
+                    // Main menu
                     if (currentScreen == Screen::MainMenu) {
                         if (
                             isButtonClicked(
@@ -1082,10 +1226,7 @@ int main() {
                         }
                     }
 
-                    // ------------------------------------------
-                    // Difficulty selection clicks
-                    // ------------------------------------------
-
+                    // Difficulty screen
                     else if (
                         currentScreen ==
                         Screen::DifficultySelect
@@ -1097,7 +1238,6 @@ int main() {
                             )
                             ) {
                             difficulty = 1;
-
                             currentScreen =
                                 Screen::PokemonSelect;
                         }
@@ -1108,7 +1248,6 @@ int main() {
                             )
                             ) {
                             difficulty = 2;
-
                             currentScreen =
                                 Screen::PokemonSelect;
                         }
@@ -1119,7 +1258,6 @@ int main() {
                             )
                             ) {
                             difficulty = 3;
-
                             currentScreen =
                                 Screen::PokemonSelect;
                         }
@@ -1134,10 +1272,7 @@ int main() {
                         }
                     }
 
-                    // ------------------------------------------
-                    // Pokémon selection clicks
-                    // ------------------------------------------
-
+                    // Pokémon selection screen
                     else if (
                         currentScreen ==
                         Screen::PokemonSelect
@@ -1184,6 +1319,18 @@ int main() {
                                     difficulty
                                 );
 
+                                setupPokemonVisuals(
+                                    battle,
+                                    playerTexture,
+                                    enemyTexture,
+                                    playerSprite,
+                                    enemySprite,
+                                    playerTextureLoaded,
+                                    enemyTextureLoaded,
+                                    playerBody,
+                                    enemyBody
+                                );
+
                                 updateBattleText(
                                     battle,
                                     playerNameText,
@@ -1228,10 +1375,7 @@ int main() {
                         }
                     }
 
-                    // ------------------------------------------
-                    // Battle screen clicks
-                    // ------------------------------------------
-
+                    // Battle screen
                     else if (
                         currentScreen ==
                         Screen::BattleScreen &&
@@ -1372,10 +1516,7 @@ int main() {
                         }
                     }
 
-                    // ------------------------------------------
-                    // Result screen clicks
-                    // ------------------------------------------
-
+                    // Result screen
                     else if (
                         currentScreen ==
                         Screen::ResultScreen
@@ -1403,13 +1544,18 @@ int main() {
             }
         }
 
-        // ==================================================
+        // --------------------------------------------------
         // Drawing
-        // ==================================================
+        // --------------------------------------------------
 
         window.clear();
 
-        window.draw(background);
+        if (backgroundTextureLoaded) {
+            window.draw(backgroundSprite);
+        }
+        else {
+            window.draw(background);
+        }
 
         if (currentScreen == Screen::MainMenu) {
             window.draw(title);
@@ -1446,13 +1592,8 @@ int main() {
             window.draw(selectHint);
 
             for (int i = 0; i < 8; i++) {
-                window.draw(
-                    pokemonButtons[i]
-                );
-
-                window.draw(
-                    pokemonTexts[i]
-                );
+                window.draw(pokemonButtons[i]);
+                window.draw(pokemonTexts[i]);
             }
         }
 
@@ -1462,11 +1603,21 @@ int main() {
             ) {
             window.draw(ground);
 
-            window.draw(playerBody);
-            window.draw(playerEye);
+            if (playerTextureLoaded) {
+                window.draw(playerSprite);
+            }
+            else {
+                window.draw(playerBody);
+                window.draw(playerEye);
+            }
 
-            window.draw(enemyBody);
-            window.draw(enemyEye);
+            if (enemyTextureLoaded) {
+                window.draw(enemySprite);
+            }
+            else {
+                window.draw(enemyBody);
+                window.draw(enemyEye);
+            }
 
             window.draw(playerHpBack);
             window.draw(playerHpFill);

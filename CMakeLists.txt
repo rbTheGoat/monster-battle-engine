@@ -37,3 +37,15 @@ add_executable(BattleTurnSimulatorSFML
 target_link_libraries(BattleTurnSimulatorSFML PRIVATE
     SFML::Graphics
 )
+
+# Copy fonts, images, and other assets beside the SFML executable
+add_custom_command(
+    TARGET BattleTurnSimulatorSFML
+    POST_BUILD
+
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/assets"
+        "$<TARGET_FILE_DIR:BattleTurnSimulatorSFML>/assets"
+
+    COMMENT "Copying game assets"
+)
