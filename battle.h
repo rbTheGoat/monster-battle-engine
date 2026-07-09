@@ -29,11 +29,27 @@ private:
     bool battleOver;
     bool playerWon;
 
+    // Tracks whether the enemy passed its status check
+    // and is ready to execute the selected move.
+    bool enemyReadyToAttack;
+
 public:
-    Battle(Pokemon player, Pokemon enemy, int selectedDifficulty);
+    Battle(
+        Pokemon player,
+        Pokemon enemy,
+        int selectedDifficulty
+    );
 
     void playerAttack(int moveIndex);
+
+    // Split enemy turn for SFML animation support.
+    bool prepareEnemyTurn();
+    Move chooseEnemyMove();
+    void executeEnemyMove(const Move& enemyMove);
+
+    // Preserved for the console version.
     void enemyTurn();
+
     void applyEndRoundEffects();
 
     bool isBattleOver();

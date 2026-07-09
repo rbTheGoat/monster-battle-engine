@@ -1,38 +1,62 @@
 #include "battle.h"
 
-Battle::Battle(Pokemon player, Pokemon enemy, int selectedDifficulty)
+Battle::Battle(
+    Pokemon player,
+    Pokemon enemy,
+    int selectedDifficulty
+)
     : playerPokemon(player),
       enemyPokemon(enemy),
+      stats(),
       difficulty(selectedDifficulty),
       round(1),
       battleOver(false),
-      playerWon(false) {
+      playerWon(false),
+      enemyReadyToAttack(false)
+{
 }
 
-void Battle::playerAttack(int moveIndex) {
+void Battle::playerAttack(int moveIndex)
+{
     if (battleOver) {
         return;
     }
 
-    bool playerCanMove = playerPokemon.canAttack();
+    bool playerCanMove =
+        playerPokemon.canAttack();
 
     if (playerCanMove) {
-        int enemyHpBefore = enemyPokemon.getHp();
-        Status enemyStatusBefore = enemyPokemon.getStatus();
+        int enemyHpBefore =
+            enemyPokemon.getHp();
 
-        Move playerMove = playerPokemon.getMove(moveIndex);
-        playerPokemon.attack(enemyPokemon, playerMove);
+        Status enemyStatusBefore =
+            enemyPokemon.getStatus();
 
-        int damageDealt = enemyHpBefore - enemyPokemon.getHp();
+        Move playerMove =
+            playerPokemon.getMove(moveIndex);
+
+        playerPokemon.attack(
+            enemyPokemon,
+            playerMove
+        );
+
+        int damageDealt =
+            enemyHpBefore -
+            enemyPokemon.getHp();
 
         if (damageDealt > 0) {
-            stats.playerDirectDamage += damageDealt;
+            stats.playerDirectDamage +=
+                damageDealt;
         }
 
-        if (enemyStatusBefore == Status::None && enemyPokemon.getStatus() != Status::None) {
+        if (
+            enemyStatusBefore == Status::None &&
+            enemyPokemon.getStatus() != Status::None
+        ) {
             stats.playerStatusesApplied++;
         }
-    } else {
+    }
+    else {
         stats.playerTurnsSkipped++;
     }
 
@@ -42,32 +66,71 @@ void Battle::playerAttack(int moveIndex) {
     }
 }
 
-void Battle::enemyTurn() {
+bool Battle::prepareEnemyTurn()
+{
     if (battleOver) {
+        enemyReadyToAttack = false;
+        return false;
+    }
+
+    enemyReadyToAttack =
+        enemyPokemon.canAttack();
+
+    if (!enemyReadyToAttack) {
+        stats.enemyTurnsSkipped++;
+        return false;
+    }
+
+    return true;
+}
+
+Move Battle::chooseEnemyMove()
+{
+    return enemyPokemon.chooseMoveByDifficulty(
+        playerPokemon,
+        difficulty
+    );
+}
+
+void Battle::executeEnemyMove(
+    const Move& enemyMove
+)
+{
+    if (
+        battleOver ||
+        !enemyReadyToAttack
+    ) {
         return;
     }
 
-    bool enemyCanMove = enemyPokemon.canAttack();
+    int playerHpBefore =
+        playerPokemon.getHp();
 
-    if (enemyCanMove) {
-        int playerHpBefore = playerPokemon.getHp();
-        Status playerStatusBefore = playerPokemon.getStatus();
+    Status playerStatusBefore =
+        playerPokemon.getStatus();
 
-        Move enemyMove = enemyPokemon.chooseMoveByDifficulty(playerPokemon, difficulty);
-        enemyPokemon.attack(playerPokemon, enemyMove);
+    enemyPokemon.attack(
+        playerPokemon,
+        enemyMove
+    );
 
-        int damageDealt = playerHpBefore - playerPokemon.getHp();
+    int damageDealt =
+        playerHpBefore -
+        playerPokemon.getHp();
 
-        if (damageDealt > 0) {
-            stats.enemyDirectDamage += damageDealt;
-        }
-
-        if (playerStatusBefore == Status::None && playerPokemon.getStatus() != Status::None) {
-            stats.enemyStatusesApplied++;
-        }
-    } else {
-        stats.enemyTurnsSkipped++;
+    if (damageDealt > 0) {
+        stats.enemyDirectDamage +=
+            damageDealt;
     }
+
+    if (
+        playerStatusBefore == Status::None &&
+        playerPokemon.getStatus() != Status::None
+    ) {
+        stats.enemyStatusesApplied++;
+    }
+
+    enemyReadyToAttack = false;
 
     if (playerPokemon.isFainted()) {
         battleOver = true;
@@ -75,26 +138,49 @@ void Battle::enemyTurn() {
     }
 }
 
-void Battle::applyEndRoundEffects() {
+void Battle::enemyTurn()
+{
+    if (!prepareEnemyTurn()) {
+        return;
+    }
+
+    Move enemyMove =
+        chooseEnemyMove();
+
+    executeEnemyMove(enemyMove);
+}
+
+void Battle::applyEndRoundEffects()
+{
     if (battleOver) {
         return;
     }
 
-    int playerHpBeforeStatus = playerPokemon.getHp();
-    int enemyHpBeforeStatus = enemyPokemon.getHp();
+    int playerHpBeforeStatus =
+        playerPokemon.getHp();
+
+    int enemyHpBeforeStatus =
+        enemyPokemon.getHp();
 
     playerPokemon.applyStatusEffect();
     enemyPokemon.applyStatusEffect();
 
-    int playerStatusDamage = playerHpBeforeStatus - playerPokemon.getHp();
-    int enemyStatusDamage = enemyHpBeforeStatus - enemyPokemon.getHp();
+    int playerStatusDamage =
+        playerHpBeforeStatus -
+        playerPokemon.getHp();
+
+    int enemyStatusDamage =
+        enemyHpBeforeStatus -
+        enemyPokemon.getHp();
 
     if (playerStatusDamage > 0) {
-        stats.statusDamageToPlayer += playerStatusDamage;
+        stats.statusDamageToPlayer +=
+            playerStatusDamage;
     }
 
     if (enemyStatusDamage > 0) {
-        stats.statusDamageToEnemy += enemyStatusDamage;
+        stats.statusDamageToEnemy +=
+            enemyStatusDamage;
     }
 
     if (playerPokemon.isFainted()) {
@@ -112,26 +198,32 @@ void Battle::applyEndRoundEffects() {
     round++;
 }
 
-bool Battle::isBattleOver() {
+bool Battle::isBattleOver()
+{
     return battleOver;
 }
 
-bool Battle::didPlayerWin() {
+bool Battle::didPlayerWin()
+{
     return playerWon;
 }
 
-int Battle::getRound() {
+int Battle::getRound()
+{
     return round;
 }
 
-BattleStats Battle::getStats() {
+BattleStats Battle::getStats()
+{
     return stats;
 }
 
-Pokemon& Battle::getPlayerPokemon() {
+Pokemon& Battle::getPlayerPokemon()
+{
     return playerPokemon;
 }
 
-Pokemon& Battle::getEnemyPokemon() {
+Pokemon& Battle::getEnemyPokemon()
+{
     return enemyPokemon;
 }
