@@ -136,7 +136,27 @@ The project includes an SFML-based interface with:
 - Battle messages
 - Battle history/log display
 
-The game runs in a dedicated SFML window while the original console application remains available as a separate build target.
+The graphical game and original console version are maintained as separate CMake build targets.
+
+---
+
+## Screenshots
+
+### Main Menu
+
+![Battle Turn Simulator Main Menu](screenshots/main-menu.png)
+
+### Difficulty Selection
+
+![Difficulty Selection](screenshots/choose-difficulty.png)
+
+### Battle Interface
+
+![Battle Interface](screenshots/battle.png)
+
+### Player Profile
+
+![Player Profile](screenshots/profile-menu.png)
 
 ---
 
@@ -251,26 +271,6 @@ lose.wav
 
 ---
 
-## Screenshots
-
-### Main Menu
-
-![Battle Turn Simulator Main Menu](screenshots/main-menu.png)
-
-### Creature Selection
-
-![Creature Selection](screenshots/creature-selection.png)
-
-### Battle Interface
-
-![Battle Interface](screenshots/battle-screen.png)
-
-### Player Profile
-
-![Player Profile](screenshots/profile-screen.png)
-
----
-
 ## Modular Architecture
 
 The SFML application was refactored from a large single source file into multiple specialized modules.
@@ -321,15 +321,17 @@ pokemonBattle/
 │   └── audio/
 │
 └── screenshots/
+    ├── battle.png
+    ├── choose-difficulty.png
     ├── main-menu.png
-    ├── creature-selection.png
-    ├── battle-screen.png
-    └── profile-screen.png
+    └── profile-menu.png
 ```
 
-### Major Modules
+---
 
-#### `pokemon.cpp`
+## Major Modules
+
+### `pokemon.cpp`
 
 Handles individual creature behavior, including:
 
@@ -342,11 +344,11 @@ Handles individual creature behavior, including:
 - Status effects
 - Move execution
 
-#### `pokemonDatabase.cpp`
+### `pokemonDatabase.cpp`
 
 Contains the creature roster and move definitions.
 
-#### `battle.cpp`
+### `battle.cpp`
 
 Controls battle-level logic such as:
 
@@ -358,7 +360,7 @@ Controls battle-level logic such as:
 - Battle statistics
 - Status processing
 
-#### `sfmlMain.cpp`
+### `sfmlMain.cpp`
 
 Controls the graphical application and coordinates:
 
@@ -369,31 +371,31 @@ Controls the graphical application and coordinates:
 - Animation state
 - UI transitions
 
-#### `moveAnimations.cpp`
+### `moveAnimations.cpp`
 
 Contains move-specific visual effects and animation behavior.
 
-#### `creatureVisuals.cpp`
+### `creatureVisuals.cpp`
 
 Handles creature textures, sprites, positioning, scaling, and fallback visuals.
 
-#### `battleLog.cpp`
+### `battleLog.cpp`
 
 Maintains and displays recent battle events.
 
-#### `profileScreen.cpp`
+### `profileScreen.cpp`
 
 Handles graphical player-profile information and profile statistics.
 
-#### `audioManager.cpp`
+### `audioManager.cpp`
 
 Loads and manages SFML sound effects.
 
-#### `sfmlHelpers.cpp`
+### `sfmlHelpers.cpp`
 
 Contains reusable SFML and interface utility functions.
 
-#### `uiTheme.cpp`
+### `uiTheme.cpp`
 
 Contains reusable styling utilities for the graphical interface.
 
