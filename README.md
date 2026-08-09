@@ -1,211 +1,606 @@
 # Battle Turn Simulator
 
-A C++ console-based turn-based battle simulator inspired by classic monster battle systems. The project features type matchups, move accuracy, critical hits, status effects, difficulty-based enemy AI, battle summaries, input validation, and a persistent player profile system.
+A turn-based creature battle game built in **C++17** with **SFML 3.1**, featuring tactical combat, status effects, multiple AI difficulties, animated attacks, persistent player profiles, battle statistics, sound effects, and a graphical interface.
+
+The project began as a console-based C++ battle engine and was progressively expanded into a modular SFML application with separate systems for gameplay logic, rendering, animations, audio, profiles, saves, and UI utilities.
+
+---
 
 ## Features
 
-* Turn-based battle system
-* Player Pokemon selection
-* Random enemy Pokemon selection
-* Multiple moves per Pokemon
-* Move accuracy system
-* Critical hit system
-* Random damage variation
-* Type effectiveness system
-* Expanded move details display
-* Status effects with turn durations:
+### Turn-Based Battle System
 
-  * Burn
-  * Poison
-  * Sleep
-  * Paralysis
-* Burn and Poison end-of-round damage
-* Sleep-based turn skipping
-* Paralysis-based chance to skip a turn
-* Rule-based enemy AI
-* Difficulty levels:
+- Player vs AI creature battles
+- Multiple selectable moves per creature
+- Move accuracy system
+- Randomized damage variation
+- Critical hits
+- Type effectiveness
+- Creature HP and fainting
+- Multi-round battles
+- End-of-round effects
 
-  * Easy: random enemy move selection
-  * Normal: smart AI with controlled randomness
-  * Hard: optimal AI move selection
-* Main menu system
-* Replay loop
-* Instructions screen
-* Battle summary after each match
-* Player profile save/load system
-* Change player name option
-* Reset profile option
-* Input validation for invalid numbers and text input
-* Git/GitHub version control setup
+### Type System
 
-## Tech Used
+The game currently supports:
 
-* C++
-* Object-Oriented Programming
-* STL Vector
-* Structs
-* Enums
-* File Handling
-* Random Number Generation
-* Input Validation
-* Git and GitHub
+- Fire
+- Water
+- Grass
+- Electric
+- Normal
+- Ghost
+- Fighting
+- Dragon
 
-## Project Structure
+Moves use their own type when calculating effectiveness.
 
+Examples include:
 
-pokemon.h
-pokemon.cpp
-pokemonDatabase.h
-pokemonDatabase.cpp
-saveSystem.h
-saveSystem.cpp
-main.cpp
-README.md
-.gitignore
+- Fire is strong against Grass
+- Water is strong against Fire
+- Grass is strong against Water
+- Electric is strong against Water
+- Fighting is strong against Normal
+- Dragon is strong against Dragon
 
+---
 
-## Core Systems
+## Status Effects
 
-### Pokemon Class
+Several battle conditions can affect creatures across multiple turns.
 
-The `Pokemon` class represents each battle character. Each Pokemon stores:
+### Burn
 
-* Name
-* HP
-* Type
-* Move list
-* Current status condition
-* Status duration
+- Can be applied by certain moves
+- Deals status damage over time
 
-### Move System
+### Poison
 
-Moves are represented using a `Move` struct. Each move contains:
+- Deals damage across multiple rounds
 
-* Name
-* Damage
-* Accuracy
-* Type
-* Status effect
-* Status chance
-* Status duration
+### Sleep
 
-### Type Effectiveness
+- Can prevent a creature from attacking
 
-The simulator uses type matchups to modify damage. For example:
+### Paralysis
 
-* Electric attacks are strong against Water.
-* Fire attacks are strong against Grass.
-* Normal attacks are weak against Ghost.
-* Dragon attacks are strong against Dragon.
+- Can cause a creature to lose its turn
 
-This makes move choice more strategic.
+Status effects have their own durations and are processed as part of the battle system.
 
-### Status Effects
+---
 
-The game supports multiple status effects:
+## Original Creature Roster
 
-* Burn deals damage at the end of each round.
-* Poison deals stronger damage at the end of each round.
-* Sleep prevents the Pokemon from attacking.
-* Paralysis gives a chance for the Pokemon to lose its turn.
+The game uses an original creature roster.
 
-Each status effect lasts for a set number of turns.
+Current creatures include:
 
-### Enemy AI
+- Voltbit
+- Emberling
+- Mossback
+- Aquafin
+- Wildkin
+- Shadegeist
+- Ironfang
+- Skywyrm
 
-The enemy uses rule-based decision-making. The AI evaluates moves using:
+Each creature has:
 
-* Base damage
-* Type effectiveness
-* Accuracy
-* Status effect usefulness
-* Knockout potential
-* Controlled randomness
+- Its own HP
+- A battle type
+- A unique move set
+- Different move damage values
+- Accuracy values
+- Status-effect possibilities
+- Custom visual assets
 
-The game also includes difficulty levels:
+---
 
-* Easy: enemy chooses random moves.
-* Normal: enemy usually chooses strong moves but sometimes chooses a second-best option.
-* Hard: enemy always chooses the best calculated move.
+## AI Difficulty System
 
-### Save System
+Three enemy AI difficulty levels are available.
 
-The player profile is saved locally using file handling. The profile tracks:
+### Easy
 
-* Player name
-* Battles played
-* Wins
-* Losses
-* Total damage dealt
-* Total damage taken
-* Total rounds played
+Uses randomized move selection.
 
-The player can also reset the profile.
+### Normal
 
-## How to Compile
+Uses a smarter randomized strategy.
 
-Use this command:
+### Hard
+
+Evaluates available attacks and attempts to select stronger moves based on the current battle situation.
+
+The battle engine separates AI decision-making from the SFML interface, allowing the same underlying battle logic to be reused independently of the graphical frontend.
+
+---
+
+## SFML Graphical Interface
+
+The project includes an SFML-based interface with:
+
+- Main menu
+- Difficulty selection
+- Creature selection
+- Battle screen
+- Result screen
+- Player profile screen
+- Player-name editing
+- Interactive buttons
+- Hover effects
+- HP bars
+- Status indicators
+- Battle messages
+- Battle history/log display
+
+The game runs in a dedicated SFML window while the original console application remains available as a separate build target.
+
+---
+
+## Battle Animations
+
+Moves have dedicated visual animation logic rather than simply applying damage instantly.
+
+Examples include:
+
+- Lunging attacks
+- Projectile effects
+- Electric effects
+- Fire effects
+- Water effects
+- Ghost effects
+- Particle effects
+- Target shaking
+- Impact flashes
+- Creature tinting
+- Fade effects
+- Burrowing movement
+- Ground effects
+
+Move animation behavior is handled separately from the core battle calculations.
+
+This allows the battle engine to remain independent of graphical presentation.
+
+---
+
+## Battle Log
+
+The SFML interface maintains a live combat log showing recent battle events.
+
+Example:
+
+```text
+Shadegeist used Void Orb.
+Aquafin took 31 damage.
+Aquafin became poisoned.
+Aquafin used Tidal Lance.
+Shadegeist took 27 damage.
+```
+
+The battle log can display:
+
+- Move usage
+- Damage received
+- Status application
+- Status damage
+- Skipped turns
+- Status recovery
+- Battle events
+
+---
+
+## Player Profile and Save System
+
+The game includes persistent player statistics.
+
+The profile stores information such as:
+
+- Player name
+- Battles played
+- Wins
+- Losses
+- Win rate
+- Total damage dealt
+- Total damage taken
+- Total rounds played
+
+The player's name can also be changed from the graphical profile screen.
+
+Profile information is saved between game sessions using the project's save system.
+
+---
+
+## Audio System
+
+The SFML version includes a separate audio-management system.
+
+Sound effects include:
+
+- Menu button clicks
+- Attack impacts
+- Fire attacks
+- Water attacks
+- Electric attacks
+- Ghost attacks
+- Victory sound
+- Defeat sound
+
+Audio is synchronized with attack animations so that impact sounds occur when attacks visually reach their targets.
+
+Audio assets are stored under:
+
+```text
+assets/audio/
+```
+
+Current files:
+
+```text
+button.wav
+hit.wav
+fire.wav
+water.wav
+electric.wav
+ghost.wav
+win.wav
+lose.wav
+```
+
+---
+
+## Screenshots
+
+### Main Menu
+
+![Battle Turn Simulator Main Menu](screenshots/main-menu.png)
+
+### Creature Selection
+
+![Creature Selection](screenshots/creature-selection.png)
+
+### Battle Interface
+
+![Battle Interface](screenshots/battle-screen.png)
+
+### Player Profile
+
+![Player Profile](screenshots/profile-screen.png)
+
+---
+
+## Modular Architecture
+
+The SFML application was refactored from a large single source file into multiple specialized modules.
+
+```text
+pokemonBattle/
+│
+├── main.cpp
+├── sfmlMain.cpp
+├── CMakeLists.txt
+│
+├── pokemon.h
+├── pokemon.cpp
+│
+├── pokemonDatabase.h
+├── pokemonDatabase.cpp
+│
+├── battle.h
+├── battle.cpp
+│
+├── saveSystem.h
+├── saveSystem.cpp
+│
+├── sfmlHelpers.h
+├── sfmlHelpers.cpp
+│
+├── battleLog.h
+├── battleLog.cpp
+│
+├── creatureVisuals.h
+├── creatureVisuals.cpp
+│
+├── moveAnimations.h
+├── moveAnimations.cpp
+│
+├── profileScreen.h
+├── profileScreen.cpp
+│
+├── audioManager.h
+├── audioManager.cpp
+│
+├── uiTheme.h
+├── uiTheme.cpp
+│
+├── assets/
+│   ├── fonts/
+│   ├── images/
+│   └── audio/
+│
+└── screenshots/
+    ├── main-menu.png
+    ├── creature-selection.png
+    ├── battle-screen.png
+    └── profile-screen.png
+```
+
+### Major Modules
+
+#### `pokemon.cpp`
+
+Handles individual creature behavior, including:
+
+- HP
+- Moves
+- Damage
+- Accuracy
+- Critical hits
+- Types
+- Status effects
+- Move execution
+
+#### `pokemonDatabase.cpp`
+
+Contains the creature roster and move definitions.
+
+#### `battle.cpp`
+
+Controls battle-level logic such as:
+
+- Player turns
+- Enemy turns
+- AI difficulty
+- Battle completion
+- Round progression
+- Battle statistics
+- Status processing
+
+#### `sfmlMain.cpp`
+
+Controls the graphical application and coordinates:
+
+- Screens
+- User input
+- Battle presentation
+- SFML event handling
+- Animation state
+- UI transitions
+
+#### `moveAnimations.cpp`
+
+Contains move-specific visual effects and animation behavior.
+
+#### `creatureVisuals.cpp`
+
+Handles creature textures, sprites, positioning, scaling, and fallback visuals.
+
+#### `battleLog.cpp`
+
+Maintains and displays recent battle events.
+
+#### `profileScreen.cpp`
+
+Handles graphical player-profile information and profile statistics.
+
+#### `audioManager.cpp`
+
+Loads and manages SFML sound effects.
+
+#### `sfmlHelpers.cpp`
+
+Contains reusable SFML and interface utility functions.
+
+#### `uiTheme.cpp`
+
+Contains reusable styling utilities for the graphical interface.
+
+---
+
+## Technology Stack
+
+- **C++17**
+- **SFML 3.1**
+- **CMake**
+- **Visual Studio**
+- **Git**
+- **GitHub**
+
+SFML is fetched automatically through CMake using `FetchContent`.
+
+---
+
+## Building the Project
+
+### Requirements
+
+You need:
+
+- A C++17-compatible compiler
+- CMake 3.16 or newer
+- Git
+- Internet access during the first CMake configuration so SFML can be fetched
+
+Visual Studio with C++ development tools is recommended on Windows.
+
+---
+
+## Building With Visual Studio
+
+Clone the repository and open the project folder containing:
+
+```text
+CMakeLists.txt
+```
+
+Visual Studio should automatically detect the CMake project and begin configuring it.
+
+After configuration finishes:
+
+```text
+Build → Build All
+```
+
+The project contains two executable targets.
+
+### Console Version
+
+```text
+BattleTurnSimulatorConsole
+```
+
+### SFML Version
+
+```text
+BattleTurnSimulatorSFML
+```
+
+To run the graphical game, select:
+
+```text
+BattleTurnSimulatorSFML.exe
+```
+
+as the startup target and use:
+
+```text
+Ctrl + F5
+```
+
+---
+
+## Building With CMake
+
+From the project root:
 
 ```bash
-g++ main.cpp pokemon.cpp pokemonDatabase.cpp saveSystem.cpp -o game
+cmake -S . -B build
 ```
 
-## How to Run
-
-On Windows:
+Then:
 
 ```bash
-.\game.exe
+cmake --build build
 ```
 
-On Linux/macOS:
+Run the SFML executable generated by your build configuration.
 
-```bash
-./game
+---
+
+## Asset Handling
+
+The project uses CMake to copy the `assets` directory beside the SFML executable after building.
+
+This includes:
+
+```text
+assets/fonts/
+assets/images/
+assets/audio/
 ```
 
-## Example Gameplay Flow
+This allows the game to load its resources through relative asset paths.
 
-```txt
-========= Monster Battle Engine =========
-1. Start Battle
-2. View Player Profile
-3. Change Player Name
-4. Instructions
-5. Reset Profile
-6. Exit
-```
+---
 
-During battle, the player chooses moves while the enemy uses AI to select its move. The battle continues until one Pokemon faints.
+## Development Progression
 
-## What I Learned
+The project was developed incrementally:
 
-This project helped me practice:
+1. Core C++ creature model
+2. Move and damage system
+3. Accuracy and critical-hit mechanics
+4. Type effectiveness
+5. Status conditions
+6. Status durations and end-of-round processing
+7. Multiple creatures and move sets
+8. AI move selection
+9. Difficulty system
+10. Battle statistics
+11. Save/profile system
+12. SFML graphical interface
+13. Creature sprites
+14. Move animations
+15. Battle log
+16. Graphical player profile
+17. Persistent player-name editing
+18. Audio system
+19. Refactoring into dedicated modules
+20. Final build and gameplay testing
 
-* Class design
-* Encapsulation
-* Structs and enums
-* Vectors
-* File I/O
-* Game loop design
-* Input validation
-* Randomized game mechanics
-* Rule-based AI
-* Git/GitHub workflow
-* Writing cleaner modular C++ code
+This progression allowed the core battle engine to remain separate from its presentation layer.
 
-## Future Improvements
+---
 
-* Add more Pokemon
-* Add more moves
-* Add more types
-* Add items and healing
-* Add team battles
-* Add better battle animations in console
-* Add unit tests
-* Refactor internal names from Pokemon to a fully original monster system
-* Create a graphical version using SFML
+## Engineering Highlights
 
-## Status
+This project demonstrates experience with:
 
-The console version is functionally complete. The next major planned upgrade is a graphical version using SFML.
+- Object-oriented C++
+- Classes and encapsulation
+- Enumerations
+- Structs
+- STL containers
+- Game-state management
+- Randomized simulation
+- AI decision logic
+- Modular software architecture
+- Event-driven programming
+- Real-time rendering
+- Animation timing
+- Asset management
+- Persistent file storage
+- Audio integration
+- CMake build configuration
+- Git-based version control
+- Refactoring a growing codebase into maintainable modules
+
+---
+
+## Potential Future Improvements
+
+The current project is feature-complete for its initial version, but possible future additions include:
+
+- Background music
+- Additional creatures
+- Additional types and moves
+- More sophisticated AI evaluation
+- Expanded battle statistics
+- Additional battle environments
+- Settings menu
+- Volume controls
+- Fullscreen/window configuration
+- Improved UI transitions
+- Additional particle effects
+- Automated tests for battle mechanics
+
+---
+
+## Project Status
+
+**Version 1.0 — Core game complete**
+
+The current version includes:
+
+- Complete turn-based battle mechanics
+- Multiple AI difficulties
+- Status effects
+- Original creature roster
+- SFML graphical interface
+- Animated moves
+- Battle logging
+- Persistent profiles
+- Player statistics
+- Player-name customization
+- Sound effects
+- Modular C++ architecture
+
+---
+
+## Author
+
+**Raghav**
+
+C++ / Software Development Project
