@@ -1,162 +1,43 @@
 #include <SFML/Graphics.hpp>
-#include <vector>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <ctime>
-#include <filesystem>
 #include <iostream>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "pokemon.h"
 #include "pokemonDatabase.h"
 #include "battle.h"
+
+#include "battleLog.h"
+#include "creatureVisuals.h"
+#include "moveAnimations.h"
+#include "sfmlHelpers.h"
+#include "saveSystem.h"
+#include "profileScreen.h"
+#include "audioManager.h"
 
 // ==================================================
 // Screens
 // ==================================================
 
 enum class Screen {
+    NameEntry,
     MainMenu,
     DifficultySelect,
     CreatureSelect,
     BattleScreen,
-    ResultScreen
-};
-
-// Each move has its own visual identity.
-// This is separate from MoveAnimation so pokemon.h
-// does not need another structural change.
-enum class MoveVisual {
-    ArcPounce,
-    CoilDischarge,
-    Flashstep,
-
-    CinderClaw,
-    FlameSpit,
-    TailSweep,
-
-    VineCoil,
-    ThornBurst,
-    DreamSpores,
-    VenomBloom,
-
-    RiptideRush,
-    RazorFin,
-    TidalLance,
-
-    BurrowRush,
-    SandSlam,
-    TremorStomp,
-
-    PhantomDive,
-    VoidOrb,
-    DreadGaze,
-    ShadowTalon,
-
-    AlloyCharge,
-    HornBreaker,
-    SteelJab,
-    Groundbreaker,
-
-    WyrmClaw,
-    GaleSweep,
-    AzureBeam,
-
-    Generic
+    ResultScreen,
+    ProfileScreen
 };
 
 // ==================================================
-// General helpers
-// ==================================================
-
-float clamp01(float value)
-{
-    return std::clamp(value, 0.0f, 1.0f);
-}
-
-float smoothStep(float value)
-{
-    value = clamp01(value);
-
-    return value * value * (3.0f - 2.0f * value);
-}
-
-float pulse(float time, float speed)
-{
-    return 0.5f + 0.5f * std::sin(time * speed);
-}
-
-sf::Color withAlpha(
-    sf::Color color,
-    int alpha
-)
-{
-    color.a = static_cast<std::uint8_t>(
-        std::clamp(alpha, 0, 255)
-        );
-
-    return color;
-}
-
-sf::Vector2f interpolatePosition(
-    sf::Vector2f start,
-    sf::Vector2f end,
-    float progress
-)
-{
-    progress = clamp01(progress);
-
-    return {
-        start.x + (end.x - start.x) * progress,
-        start.y + (end.y - start.y) * progress
-    };
-}
-
-bool isButtonClicked(
-    const sf::RectangleShape& button,
-    sf::Vector2f mousePosition
-)
-{
-    return button
-        .getGlobalBounds()
-        .contains(mousePosition);
-}
-
-void updateButtonHover(
-    sf::RectangleShape& button,
-    sf::Vector2f mousePosition,
-    bool enabled = true
-)
-{
-    if (!enabled) {
-        button.setFillColor(
-            sf::Color(70, 70, 85)
-        );
-
-        return;
-    }
-
-    if (
-        button
-        .getGlobalBounds()
-        .contains(mousePosition)
-        ) {
-        button.setFillColor(
-            sf::Color(120, 120, 170)
-        );
-    }
-    else {
-        button.setFillColor(
-            sf::Color(90, 90, 120)
-        );
-    }
-}
-
-// ==================================================
-// Creature creation
+// Creature selection
 // ==================================================
 
 Pokemon getCreatureByChoice(int choice)
@@ -171,2588 +52,6 @@ Pokemon getCreatureByChoice(int choice)
     if (choice == 8) return getSkywyrm();
 
     return getVoltbit();
-}
-
-// ==================================================
-// Battle log helpers
-// ==================================================
-
-void addBattleLog(
-    std::vector<std::string>& battleLog,
-    const std::string& message
-)
-{
-    if (message.empty()) {
-        return;
-    }
-
-    battleLog.push_back(message);
-
-    const std::size_t maximumLogLines = 5;
-
-    while (battleLog.size() > maximumLogLines) {
-        battleLog.erase(battleLog.begin());
-    }
-}
-
-void updateBattleLogTexts(
-    const std::vector<std::string>& battleLog,
-    std::vector<sf::Text>& battleLogTexts
-)
-{
-    for (
-        std::size_t i = 0;
-        i < battleLogTexts.size();
-        i++
-        ) {
-        if (i < battleLog.size()) {
-            battleLogTexts[i].setString(
-                battleLog[i]
-            );
-        }
-        else {
-            battleLogTexts[i].setString("");
-        }
-    }
-}
-
-std::string getStatusEventText(Status status)
-{
-    if (status == Status::Burn) {
-        return "burned";
-    }
-
-    if (status == Status::Poison) {
-        return "poisoned";
-    }
-
-    if (status == Status::Sleep) {
-        return "asleep";
-    }
-
-    if (status == Status::Paralysis) {
-        return "paralyzed";
-    }
-
-    return "affected";
-}
-
-std::string getStatusConditionName(Status status)
-{
-    if (status == Status::Burn) {
-        return "burn";
-    }
-
-    if (status == Status::Poison) {
-        return "poison";
-    }
-
-    if (status == Status::Sleep) {
-        return "sleep";
-    }
-
-    if (status == Status::Paralysis) {
-        return "paralysis";
-    }
-
-    return "status effect";
-}
-
-void addMoveResultToBattleLog(
-    std::vector<std::string>& battleLog,
-    const std::string& targetName,
-    int hpBefore,
-    int hpAfter,
-    Status statusBefore,
-    Status statusAfter,
-    const Move& move
-)
-{
-    int damageTaken =
-        hpBefore - hpAfter;
-
-    bool damageLogged = false;
-    bool statusLogged = false;
-
-    if (damageTaken > 0) {
-        addBattleLog(
-            battleLog,
-            targetName +
-            " took " +
-            std::to_string(damageTaken) +
-            " damage."
-        );
-
-        damageLogged = true;
-    }
-
-    if (
-        statusBefore == Status::None &&
-        statusAfter != Status::None
-        ) {
-        addBattleLog(
-            battleLog,
-            targetName +
-            " became " +
-            getStatusEventText(statusAfter) +
-            "."
-        );
-
-        statusLogged = true;
-    }
-
-    if (!damageLogged && !statusLogged) {
-        if (move.damage > 0) {
-            addBattleLog(
-                battleLog,
-                move.name +
-                " caused no damage."
-            );
-        }
-        else {
-            addBattleLog(
-                battleLog,
-                move.name +
-                " had no visible effect."
-            );
-        }
-    }
-}
-
-// ==================================================
-// Status helpers
-// ==================================================
-
-std::string getStatusDisplayText(Status status)
-{
-    if (status == Status::None) {
-        return "Status: None";
-    }
-
-    if (status == Status::Burn) {
-        return "Status: Burned";
-    }
-
-    if (status == Status::Poison) {
-        return "Status: Poisoned";
-    }
-
-    if (status == Status::Sleep) {
-        return "Status: Asleep";
-    }
-
-    if (status == Status::Paralysis) {
-        return "Status: Paralyzed";
-    }
-
-    return "Status: Unknown";
-}
-
-sf::Color getStatusColor(Status status)
-{
-    if (status == Status::None) {
-        return sf::Color(90, 90, 90);
-    }
-
-    if (status == Status::Burn) {
-        return sf::Color(230, 90, 40);
-    }
-
-    if (status == Status::Poison) {
-        return sf::Color(150, 70, 190);
-    }
-
-    if (status == Status::Sleep) {
-        return sf::Color(80, 130, 220);
-    }
-
-    if (status == Status::Paralysis) {
-        return sf::Color(230, 210, 60);
-    }
-
-    return sf::Color::White;
-}
-
-void updateStatusDisplay(
-    Battle& battle,
-    sf::Text& playerStatusText,
-    sf::Text& enemyStatusText,
-    sf::RectangleShape& playerStatusIcon,
-    sf::RectangleShape& enemyStatusIcon
-)
-{
-    Status playerStatus =
-        battle.getPlayerPokemon().getStatus();
-
-    Status enemyStatus =
-        battle.getEnemyPokemon().getStatus();
-
-    playerStatusText.setString(
-        getStatusDisplayText(playerStatus)
-    );
-
-    enemyStatusText.setString(
-        getStatusDisplayText(enemyStatus)
-    );
-
-    playerStatusIcon.setFillColor(
-        getStatusColor(playerStatus)
-    );
-
-    enemyStatusIcon.setFillColor(
-        getStatusColor(enemyStatus)
-    );
-}
-
-// ==================================================
-// HP and text helpers
-// ==================================================
-
-void updateHpBar(
-    sf::RectangleShape& hpFill,
-    int currentHp,
-    int maxHp,
-    float maximumWidth
-)
-{
-    currentHp = std::max(0, currentHp);
-
-    if (maxHp <= 0) {
-        hpFill.setSize({
-            0.0f,
-            hpFill.getSize().y
-            });
-
-        return;
-    }
-
-    float percentage =
-        static_cast<float>(currentHp) /
-        static_cast<float>(maxHp);
-
-    percentage = clamp01(percentage);
-
-    hpFill.setSize({
-        maximumWidth * percentage,
-        hpFill.getSize().y
-        });
-
-    if (percentage > 0.5f) {
-        hpFill.setFillColor(
-            sf::Color(80, 220, 100)
-        );
-    }
-    else if (percentage > 0.25f) {
-        hpFill.setFillColor(
-            sf::Color(230, 200, 60)
-        );
-    }
-    else {
-        hpFill.setFillColor(
-            sf::Color(220, 80, 80)
-        );
-    }
-}
-
-std::string makeHpText(
-    const std::string& label,
-    Pokemon& creature,
-    int maxHp
-)
-{
-    return label +
-        " HP: " +
-        std::to_string(creature.getHp()) +
-        " / " +
-        std::to_string(maxHp);
-}
-
-std::string getMoveNameOrEmpty(
-    Pokemon& creature,
-    int index
-)
-{
-    if (
-        index >= 0 &&
-        index < creature.getMoveCount()
-        ) {
-        return creature
-            .getMove(index)
-            .name;
-    }
-
-    return "Empty";
-}
-
-void updateBattleText(
-    Battle& battle,
-    sf::Text& playerNameText,
-    sf::Text& enemyNameText,
-    sf::Text& playerHpText,
-    sf::Text& enemyHpText,
-    sf::Text& moveText1,
-    sf::Text& moveText2,
-    sf::Text& moveText3,
-    sf::Text& moveText4,
-    int playerMaxHp,
-    int enemyMaxHp
-)
-{
-    playerNameText.setString(
-        "Player: " +
-        battle.getPlayerPokemon().getName()
-    );
-
-    enemyNameText.setString(
-        "Enemy: " +
-        battle.getEnemyPokemon().getName()
-    );
-
-    playerHpText.setString(
-        makeHpText(
-            "Player",
-            battle.getPlayerPokemon(),
-            playerMaxHp
-        )
-    );
-
-    enemyHpText.setString(
-        makeHpText(
-            "Enemy",
-            battle.getEnemyPokemon(),
-            enemyMaxHp
-        )
-    );
-
-    moveText1.setString(
-        getMoveNameOrEmpty(
-            battle.getPlayerPokemon(),
-            0
-        )
-    );
-
-    moveText2.setString(
-        getMoveNameOrEmpty(
-            battle.getPlayerPokemon(),
-            1
-        )
-    );
-
-    moveText3.setString(
-        getMoveNameOrEmpty(
-            battle.getPlayerPokemon(),
-            2
-        )
-    );
-
-    moveText4.setString(
-        getMoveNameOrEmpty(
-            battle.getPlayerPokemon(),
-            3
-        )
-    );
-}
-
-// ==================================================
-// Texture and creature helpers
-// ==================================================
-
-bool loadPixelTexture(
-    sf::Texture& texture,
-    const std::string& path
-)
-{
-    if (
-        path.empty() ||
-        !std::filesystem::exists(path)
-        ) {
-        return false;
-    }
-
-    if (!texture.loadFromFile(path)) {
-        std::cout
-            << "Failed to load texture: "
-            << path
-            << "\n";
-
-        return false;
-    }
-
-    texture.setSmooth(false);
-
-    return true;
-}
-
-void scaleSpriteToSize(
-    sf::Sprite& sprite,
-    const sf::Texture& texture,
-    float targetWidth,
-    float targetHeight
-)
-{
-    sf::Vector2u textureSize =
-        texture.getSize();
-
-    if (
-        textureSize.x == 0 ||
-        textureSize.y == 0
-        ) {
-        return;
-    }
-
-    float scaleX =
-        targetWidth /
-        static_cast<float>(textureSize.x);
-
-    float scaleY =
-        targetHeight /
-        static_cast<float>(textureSize.y);
-
-    sprite.setScale({
-        scaleX,
-        scaleY
-        });
-}
-
-std::string getCreatureImagePath(
-    const std::string& creatureName,
-    bool useBackSprite
-)
-{
-    std::string suffix =
-        useBackSprite
-        ? "_back.png"
-        : "_front.png";
-
-    if (creatureName == "Voltbit") {
-        return "assets/images/voltbit" + suffix;
-    }
-
-    if (creatureName == "Emberling") {
-        return "assets/images/emberling" + suffix;
-    }
-
-    if (creatureName == "Mossback") {
-        return "assets/images/mossback" + suffix;
-    }
-
-    if (creatureName == "Aquafin") {
-        return "assets/images/aquafin" + suffix;
-    }
-
-    if (creatureName == "Wildkin") {
-        return "assets/images/wildkin" + suffix;
-    }
-
-    if (creatureName == "Shadegeist") {
-        return "assets/images/shadegeist" + suffix;
-    }
-
-    if (creatureName == "Ironfang") {
-        return "assets/images/ironfang" + suffix;
-    }
-
-    if (creatureName == "Skywyrm") {
-        return "assets/images/skywyrm" + suffix;
-    }
-
-    return "";
-}
-
-sf::Color getCreatureFallbackColor(
-    const std::string& creatureName
-)
-{
-    if (creatureName == "Voltbit") {
-        return sf::Color(240, 210, 70);
-    }
-
-    if (creatureName == "Emberling") {
-        return sf::Color(230, 95, 55);
-    }
-
-    if (creatureName == "Mossback") {
-        return sf::Color(90, 180, 90);
-    }
-
-    if (creatureName == "Aquafin") {
-        return sf::Color(80, 170, 240);
-    }
-
-    if (creatureName == "Wildkin") {
-        return sf::Color(170, 120, 75);
-    }
-
-    if (creatureName == "Shadegeist") {
-        return sf::Color(120, 80, 170);
-    }
-
-    if (creatureName == "Ironfang") {
-        return sf::Color(70, 100, 180);
-    }
-
-    if (creatureName == "Skywyrm") {
-        return sf::Color(230, 160, 80);
-    }
-
-    return sf::Color(180, 180, 180);
-}
-
-void setupCreatureVisuals(
-    Battle& battle,
-    sf::Texture& playerTexture,
-    sf::Texture& enemyTexture,
-    sf::Sprite& playerSprite,
-    sf::Sprite& enemySprite,
-    bool& playerTextureLoaded,
-    bool& enemyTextureLoaded,
-    sf::RectangleShape& playerBody,
-    sf::RectangleShape& enemyBody
-)
-{
-    std::string playerName =
-        battle.getPlayerPokemon().getName();
-
-    std::string enemyName =
-        battle.getEnemyPokemon().getName();
-
-    playerTextureLoaded =
-        loadPixelTexture(
-            playerTexture,
-            getCreatureImagePath(
-                playerName,
-                true
-            )
-        );
-
-    enemyTextureLoaded =
-        loadPixelTexture(
-            enemyTexture,
-            getCreatureImagePath(
-                enemyName,
-                false
-            )
-        );
-
-    playerBody.setFillColor(
-        getCreatureFallbackColor(playerName)
-    );
-
-    enemyBody.setFillColor(
-        getCreatureFallbackColor(enemyName)
-    );
-
-    if (playerTextureLoaded) {
-        playerSprite.setTexture(
-            playerTexture,
-            true
-        );
-
-        playerSprite.setPosition({
-            180.0f,
-            240.0f
-            });
-
-        playerSprite.setColor(
-            sf::Color::White
-        );
-
-        scaleSpriteToSize(
-            playerSprite,
-            playerTexture,
-            210.0f,
-            210.0f
-        );
-    }
-
-    if (enemyTextureLoaded) {
-        enemySprite.setTexture(
-            enemyTexture,
-            true
-        );
-
-        enemySprite.setPosition({
-            855.0f,
-            130.0f
-            });
-
-        enemySprite.setColor(
-            sf::Color::White
-        );
-
-        scaleSpriteToSize(
-            enemySprite,
-            enemyTexture,
-            200.0f,
-            200.0f
-        );
-    }
-}
-
-void setCreaturePosition(
-    sf::Sprite& sprite,
-    sf::RectangleShape& body,
-    sf::RectangleShape& eye,
-    bool textureLoaded,
-    sf::Vector2f spritePosition,
-    sf::Vector2f bodyPosition,
-    sf::Vector2f eyePosition
-)
-{
-    if (textureLoaded) {
-        sprite.setPosition(spritePosition);
-    }
-    else {
-        body.setPosition(bodyPosition);
-        eye.setPosition(eyePosition);
-    }
-}
-
-void setCreatureColor(
-    sf::Sprite& sprite,
-    sf::RectangleShape& body,
-    bool textureLoaded,
-    sf::Color color
-)
-{
-    if (textureLoaded) {
-        sprite.setColor(color);
-    }
-    else {
-        body.setFillColor(color);
-    }
-}
-
-// ==================================================
-// Move visual mapping
-// ==================================================
-
-MoveVisual getMoveVisual(
-    const std::string& moveName
-)
-{
-    if (moveName == "Arc Pounce") {
-        return MoveVisual::ArcPounce;
-    }
-
-    if (moveName == "Coil Discharge") {
-        return MoveVisual::CoilDischarge;
-    }
-
-    if (moveName == "Flashstep") {
-        return MoveVisual::Flashstep;
-    }
-
-    if (moveName == "Cinder Claw") {
-        return MoveVisual::CinderClaw;
-    }
-
-    if (moveName == "Flame Spit") {
-        return MoveVisual::FlameSpit;
-    }
-
-    if (moveName == "Tail Sweep") {
-        return MoveVisual::TailSweep;
-    }
-
-    if (moveName == "Vine Coil") {
-        return MoveVisual::VineCoil;
-    }
-
-    if (moveName == "Thorn Burst") {
-        return MoveVisual::ThornBurst;
-    }
-
-    if (moveName == "Dream Spores") {
-        return MoveVisual::DreamSpores;
-    }
-
-    if (moveName == "Venom Bloom") {
-        return MoveVisual::VenomBloom;
-    }
-
-    if (moveName == "Riptide Rush") {
-        return MoveVisual::RiptideRush;
-    }
-
-    if (moveName == "Razor Fin") {
-        return MoveVisual::RazorFin;
-    }
-
-    if (moveName == "Tidal Lance") {
-        return MoveVisual::TidalLance;
-    }
-
-    if (moveName == "Burrow Rush") {
-        return MoveVisual::BurrowRush;
-    }
-
-    if (moveName == "Sand Slam") {
-        return MoveVisual::SandSlam;
-    }
-
-    if (moveName == "Tremor Stomp") {
-        return MoveVisual::TremorStomp;
-    }
-
-    if (moveName == "Phantom Dive") {
-        return MoveVisual::PhantomDive;
-    }
-
-    if (moveName == "Void Orb") {
-        return MoveVisual::VoidOrb;
-    }
-
-    if (moveName == "Dread Gaze") {
-        return MoveVisual::DreadGaze;
-    }
-
-    if (moveName == "Shadow Talon") {
-        return MoveVisual::ShadowTalon;
-    }
-
-    if (moveName == "Alloy Charge") {
-        return MoveVisual::AlloyCharge;
-    }
-
-    if (moveName == "Horn Breaker") {
-        return MoveVisual::HornBreaker;
-    }
-
-    if (moveName == "Steel Jab") {
-        return MoveVisual::SteelJab;
-    }
-
-    if (moveName == "Groundbreaker") {
-        return MoveVisual::Groundbreaker;
-    }
-
-    if (moveName == "Wyrm Claw") {
-        return MoveVisual::WyrmClaw;
-    }
-
-    if (moveName == "Gale Sweep") {
-        return MoveVisual::GaleSweep;
-    }
-
-    if (moveName == "Azure Beam") {
-        return MoveVisual::AzureBeam;
-    }
-
-    return MoveVisual::Generic;
-}
-
-sf::Color getMoveEffectColor(Type type)
-{
-    if (type == Type::Electric) {
-        return sf::Color(255, 230, 60);
-    }
-
-    if (type == Type::Fire) {
-        return sf::Color(255, 95, 35);
-    }
-
-    if (type == Type::Water) {
-        return sf::Color(55, 180, 255);
-    }
-
-    if (type == Type::Grass) {
-        return sf::Color(85, 220, 100);
-    }
-
-    if (type == Type::Ghost) {
-        return sf::Color(155, 75, 225);
-    }
-
-    if (type == Type::Dark) {
-        return sf::Color(80, 45, 125);
-    }
-
-    if (type == Type::Steel) {
-        return sf::Color(195, 210, 225);
-    }
-
-    if (type == Type::Fighting) {
-        return sf::Color(225, 80, 55);
-    }
-
-    if (type == Type::Dragon) {
-        return sf::Color(75, 120, 255);
-    }
-
-    if (type == Type::Flying) {
-        return sf::Color(190, 225, 255);
-    }
-
-    if (type == Type::Poison) {
-        return sf::Color(180, 60, 205);
-    }
-
-    return sf::Color(235, 235, 235);
-}
-
-float getMoveDuration(MoveVisual visual)
-{
-    if (
-        visual == MoveVisual::AzureBeam ||
-        visual == MoveVisual::CoilDischarge
-        ) {
-        return 1.20f;
-    }
-
-    if (
-        visual == MoveVisual::DreamSpores ||
-        visual == MoveVisual::VenomBloom ||
-        visual == MoveVisual::DreadGaze
-        ) {
-        return 1.10f;
-    }
-
-    if (
-        visual == MoveVisual::BurrowRush ||
-        visual == MoveVisual::PhantomDive
-        ) {
-        return 1.00f;
-    }
-
-    return 0.85f;
-}
-
-float getMoveImpactProgress(MoveVisual visual)
-{
-    if (
-        visual == MoveVisual::AzureBeam ||
-        visual == MoveVisual::CoilDischarge
-        ) {
-        return 0.68f;
-    }
-
-    if (
-        visual == MoveVisual::DreamSpores ||
-        visual == MoveVisual::VenomBloom ||
-        visual == MoveVisual::DreadGaze
-        ) {
-        return 0.72f;
-    }
-
-    return 0.58f;
-}
-
-// ==================================================
-// Shape drawing helpers
-// ==================================================
-
-void drawLine(
-    sf::RenderWindow& window,
-    sf::Vector2f start,
-    sf::Vector2f end,
-    float thickness,
-    sf::Color color
-)
-{
-    float dx = end.x - start.x;
-    float dy = end.y - start.y;
-
-    float length =
-        std::sqrt(dx * dx + dy * dy);
-
-    if (length <= 0.0f) {
-        return;
-    }
-
-    float angle =
-        std::atan2(dy, dx) *
-        180.0f /
-        3.14159265358979323846f;
-
-    sf::RectangleShape line({
-        length,
-        thickness
-        });
-
-    line.setOrigin({
-        0.0f,
-        thickness / 2.0f
-        });
-
-    line.setPosition(start);
-    line.setRotation(sf::degrees(angle));
-    line.setFillColor(color);
-
-    window.draw(line);
-}
-
-void drawRing(
-    sf::RenderWindow& window,
-    sf::Vector2f center,
-    float radius,
-    float thickness,
-    sf::Color color
-)
-{
-    sf::CircleShape ring(radius);
-
-    ring.setOrigin({
-        radius,
-        radius
-        });
-
-    ring.setPosition(center);
-    ring.setFillColor(
-        sf::Color::Transparent
-    );
-
-    ring.setOutlineThickness(thickness);
-    ring.setOutlineColor(color);
-
-    window.draw(ring);
-}
-
-void drawFilledCircle(
-    sf::RenderWindow& window,
-    sf::Vector2f center,
-    float radius,
-    sf::Color color
-)
-{
-    sf::CircleShape circle(radius);
-
-    circle.setOrigin({
-        radius,
-        radius
-        });
-
-    circle.setPosition(center);
-    circle.setFillColor(color);
-
-    window.draw(circle);
-}
-
-void drawSparkBurst(
-    sf::RenderWindow& window,
-    sf::Vector2f center,
-    float radius,
-    sf::Color color,
-    int amount
-)
-{
-    for (int i = 0; i < amount; i++) {
-        float angle =
-            (
-                6.28318530718f *
-                static_cast<float>(i)
-                ) /
-            static_cast<float>(amount);
-
-        sf::Vector2f inner({
-            center.x + std::cos(angle) * radius * 0.3f,
-            center.y + std::sin(angle) * radius * 0.3f
-            });
-
-        sf::Vector2f outer({
-            center.x + std::cos(angle) * radius,
-            center.y + std::sin(angle) * radius
-            });
-
-        drawLine(
-            window,
-            inner,
-            outer,
-            4.0f,
-            color
-        );
-    }
-}
-
-void drawLightningBolt(
-    sf::RenderWindow& window,
-    sf::Vector2f start,
-    sf::Vector2f end,
-    sf::Color color,
-    float time
-)
-{
-    const int segments = 8;
-
-    sf::Vector2f previous = start;
-
-    for (int i = 1; i <= segments; i++) {
-        float progress =
-            static_cast<float>(i) /
-            static_cast<float>(segments);
-
-        sf::Vector2f current =
-            interpolatePosition(
-                start,
-                end,
-                progress
-            );
-
-        if (i < segments) {
-            float offset =
-                std::sin(
-                    time * 70.0f +
-                    static_cast<float>(i) * 2.7f
-                ) * 18.0f;
-
-            current.x += offset;
-        }
-
-        drawLine(
-            window,
-            previous,
-            current,
-            8.0f,
-            withAlpha(color, 245)
-        );
-
-        drawLine(
-            window,
-            previous,
-            current,
-            3.0f,
-            sf::Color::White
-        );
-
-        previous = current;
-    }
-}
-
-void drawFloatingParticles(
-    sf::RenderWindow& window,
-    sf::Vector2f center,
-    float time,
-    sf::Color color,
-    int amount,
-    float spread,
-    float radius
-)
-{
-    for (int i = 0; i < amount; i++) {
-        float phase =
-            static_cast<float>(i) * 1.85f;
-
-        float x =
-            center.x +
-            std::sin(
-                time * 2.8f + phase
-            ) * spread;
-
-        float y =
-            center.y +
-            std::cos(
-                time * 2.0f + phase
-            ) * spread * 0.55f -
-            std::fmod(
-                time * 45.0f +
-                static_cast<float>(i) * 17.0f,
-                spread
-            );
-
-        drawFilledCircle(
-            window,
-            { x, y },
-            radius +
-            static_cast<float>(i % 3),
-            withAlpha(
-                color,
-                130 + (i % 3) * 35
-            )
-        );
-    }
-}
-
-// ==================================================
-// Move-effect drawing
-// ==================================================
-
-void drawMoveEffects(
-    sf::RenderWindow& window,
-    MoveVisual visual,
-    Type moveType,
-    bool playerAttacking,
-    float elapsed,
-    float duration
-)
-{
-    float progress =
-        clamp01(elapsed / duration);
-
-    float impactProgress =
-        getMoveImpactProgress(visual);
-
-    sf::Vector2f playerCenter({
-        285.0f,
-        335.0f
-        });
-
-    sf::Vector2f enemyCenter({
-        955.0f,
-        230.0f
-        });
-
-    sf::Vector2f attackerCenter =
-        playerAttacking
-        ? playerCenter
-        : enemyCenter;
-
-    sf::Vector2f targetCenter =
-        playerAttacking
-        ? enemyCenter
-        : playerCenter;
-
-    sf::Color color =
-        getMoveEffectColor(moveType);
-
-    float direction =
-        playerAttacking
-        ? 1.0f
-        : -1.0f;
-
-    // --------------------------------------------------
-    // VOLTBIT
-    // --------------------------------------------------
-
-    if (visual == MoveVisual::ArcPounce) {
-        if (progress > 0.30f) {
-            float boltStrength =
-                clamp01(
-                    (progress - 0.30f) /
-                    0.25f
-                );
-
-            drawLightningBolt(
-                window,
-                {
-                    targetCenter.x,
-                    -20.0f
-                },
-                targetCenter,
-                withAlpha(
-                    sf::Color(255, 235, 70),
-                    static_cast<int>(
-                        255.0f * boltStrength
-                        )
-                ),
-                elapsed
-            );
-
-            drawSparkBurst(
-                window,
-                targetCenter,
-                45.0f +
-                pulse(elapsed, 25.0f) *
-                20.0f,
-                sf::Color(255, 235, 70),
-                10
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::CoilDischarge) {
-        float chargeProgress =
-            clamp01(progress / 0.48f);
-
-        for (int i = 0; i < 3; i++) {
-            drawRing(
-                window,
-                attackerCenter,
-                30.0f +
-                chargeProgress * 65.0f +
-                static_cast<float>(i) * 16.0f,
-                4.0f,
-                withAlpha(
-                    color,
-                    200 - i * 45
-                )
-            );
-        }
-
-        if (progress > 0.48f) {
-            drawLightningBolt(
-                window,
-                attackerCenter,
-                targetCenter,
-                color,
-                elapsed
-            );
-
-            drawLightningBolt(
-                window,
-                {
-                    attackerCenter.x,
-                    attackerCenter.y - 18.0f
-                },
-                {
-                    targetCenter.x,
-                    targetCenter.y + 22.0f
-                },
-                withAlpha(color, 190),
-                elapsed + 0.13f
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::Flashstep) {
-        float travel =
-            progress < impactProgress
-            ? progress / impactProgress
-            : 1.0f;
-
-        sf::Vector2f current =
-            interpolatePosition(
-                attackerCenter,
-                targetCenter,
-                smoothStep(travel)
-            );
-
-        for (int i = 1; i <= 4; i++) {
-            drawLine(
-                window,
-                {
-                    current.x -
-                        direction *
-                        static_cast<float>(i) *
-                        42.0f,
-                    current.y +
-                        static_cast<float>(i % 2) *
-                        8.0f
-                },
-                {
-                    current.x -
-                        direction *
-                        static_cast<float>(i) *
-                        8.0f,
-                    current.y
-                },
-                5.0f,
-                withAlpha(
-                    sf::Color::White,
-                    190 - i * 32
-                )
-            );
-        }
-
-        if (progress > impactProgress - 0.06f) {
-            drawSparkBurst(
-                window,
-                targetCenter,
-                55.0f,
-                sf::Color::White,
-                8
-            );
-        }
-
-        return;
-    }
-
-    // --------------------------------------------------
-    // EMBERLING
-    // --------------------------------------------------
-
-    if (visual == MoveVisual::CinderClaw) {
-        if (progress > 0.38f) {
-            float slashProgress =
-                clamp01(
-                    (progress - 0.38f) /
-                    0.26f
-                );
-
-            for (int i = -1; i <= 1; i++) {
-                sf::Vector2f start({
-                    targetCenter.x -
-                        direction * 55.0f,
-                    targetCenter.y -
-                        55.0f +
-                        static_cast<float>(i) * 16.0f
-                    });
-
-                sf::Vector2f end({
-                    targetCenter.x +
-                        direction *
-                        55.0f *
-                        slashProgress,
-                    targetCenter.y +
-                        50.0f +
-                        static_cast<float>(i) * 16.0f
-                    });
-
-                drawLine(
-                    window,
-                    start,
-                    end,
-                    7.0f,
-                    withAlpha(
-                        sf::Color(255, 115, 35),
-                        220
-                    )
-                );
-            }
-
-            drawFloatingParticles(
-                window,
-                targetCenter,
-                elapsed,
-                sf::Color(255, 125, 40),
-                8,
-                55.0f,
-                4.0f
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::FlameSpit) {
-        float travel =
-            clamp01(progress / impactProgress);
-
-        sf::Vector2f fireballPosition =
-            interpolatePosition(
-                attackerCenter,
-                targetCenter,
-                smoothStep(travel)
-            );
-
-        if (progress < impactProgress) {
-            drawFilledCircle(
-                window,
-                fireballPosition,
-                18.0f +
-                pulse(elapsed, 30.0f) *
-                7.0f,
-                sf::Color(255, 90, 25)
-            );
-
-            drawFilledCircle(
-                window,
-                fireballPosition,
-                9.0f,
-                sf::Color(255, 225, 90)
-            );
-
-            for (int i = 1; i <= 4; i++) {
-                drawFilledCircle(
-                    window,
-                    {
-                        fireballPosition.x -
-                            direction *
-                            static_cast<float>(i) *
-                            16.0f,
-                        fireballPosition.y +
-                            std::sin(
-                                elapsed * 20.0f +
-                                static_cast<float>(i)
-                            ) * 7.0f
-                    },
-                    7.0f -
-                    static_cast<float>(i),
-                    withAlpha(
-                        sf::Color(255, 115, 35),
-                        210 - i * 35
-                    )
-                );
-            }
-        }
-        else {
-            float explosion =
-                clamp01(
-                    (progress - impactProgress) /
-                    (1.0f - impactProgress)
-                );
-
-            drawRing(
-                window,
-                targetCenter,
-                25.0f + explosion * 85.0f,
-                10.0f,
-                withAlpha(
-                    sf::Color(255, 80, 20),
-                    static_cast<int>(
-                        255.0f *
-                        (1.0f - explosion)
-                        )
-                )
-            );
-
-            drawSparkBurst(
-                window,
-                targetCenter,
-                45.0f + explosion * 55.0f,
-                sf::Color(255, 135, 35),
-                12
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::TailSweep) {
-        if (progress > 0.30f) {
-            float sweep =
-                clamp01(
-                    (progress - 0.30f) /
-                    0.35f
-                );
-
-            for (int i = 0; i < 3; i++) {
-                float offset =
-                    static_cast<float>(i) *
-                    15.0f;
-
-                drawLine(
-                    window,
-                    {
-                        targetCenter.x -
-                            direction *
-                            (80.0f - offset),
-                        targetCenter.y +
-                            45.0f + offset
-                    },
-                    {
-                        targetCenter.x +
-                            direction *
-                            70.0f *
-                            sweep,
-                        targetCenter.y -
-                            35.0f + offset
-                    },
-                    6.0f,
-                    withAlpha(
-                        sf::Color(255, 160, 70),
-                        220 - i * 45
-                    )
-                );
-            }
-        }
-
-        return;
-    }
-
-    // --------------------------------------------------
-    // MOSSBACK
-    // --------------------------------------------------
-
-    if (visual == MoveVisual::VineCoil) {
-        if (progress > 0.25f) {
-            float coilProgress =
-                clamp01(
-                    (progress - 0.25f) /
-                    0.55f
-                );
-
-            for (int i = 0; i < 4; i++) {
-                float radius =
-                    95.0f -
-                    coilProgress * 45.0f +
-                    static_cast<float>(i) * 10.0f;
-
-                drawRing(
-                    window,
-                    {
-                        targetCenter.x,
-                        targetCenter.y +
-                            static_cast<float>(i - 2) *
-                            12.0f
-                    },
-                    radius,
-                    7.0f,
-                    withAlpha(
-                        sf::Color(60, 190, 85),
-                        210 - i * 25
-                    )
-                );
-            }
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::ThornBurst) {
-        for (int i = 0; i < 3; i++) {
-            float localProgress =
-                clamp01(
-                    (
-                        progress -
-                        static_cast<float>(i) * 0.12f
-                        ) /
-                    0.58f
-                );
-
-            sf::Vector2f position =
-                interpolatePosition(
-                    attackerCenter,
-                    targetCenter,
-                    smoothStep(localProgress)
-                );
-
-            sf::RectangleShape thorn({
-                36.0f,
-                8.0f
-                });
-
-            thorn.setOrigin({
-                18.0f,
-                4.0f
-                });
-
-            thorn.setPosition({
-                position.x,
-                position.y +
-                    static_cast<float>(i - 1) *
-                    25.0f
-                });
-
-            thorn.setFillColor(
-                sf::Color(90, 220, 95)
-            );
-
-            thorn.setRotation(
-                sf::degrees(
-                    playerAttacking
-                    ? -10.0f
-                    : 170.0f
-                )
-            );
-
-            window.draw(thorn);
-        }
-
-        if (progress > impactProgress) {
-            drawSparkBurst(
-                window,
-                targetCenter,
-                50.0f,
-                sf::Color(100, 235, 105),
-                8
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::DreamSpores) {
-        float fadeIn =
-            clamp01(progress / 0.35f);
-
-        drawFloatingParticles(
-            window,
-            targetCenter,
-            elapsed,
-            withAlpha(
-                sf::Color(120, 150, 255),
-                static_cast<int>(
-                    220.0f * fadeIn
-                    )
-            ),
-            16,
-            95.0f,
-            7.0f
-        );
-
-        for (int i = 0; i < 3; i++) {
-            float radius =
-                35.0f +
-                std::fmod(
-                    elapsed * 40.0f +
-                    static_cast<float>(i) * 30.0f,
-                    95.0f
-                );
-
-            drawRing(
-                window,
-                targetCenter,
-                radius,
-                3.0f,
-                withAlpha(
-                    sf::Color(105, 125, 235),
-                    160 - i * 35
-                )
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::VenomBloom) {
-        float bloom =
-            smoothStep(
-                clamp01(progress / 0.55f)
-            );
-
-        for (int i = 0; i < 6; i++) {
-            float angle =
-                static_cast<float>(i) *
-                1.0471975512f;
-
-            sf::Vector2f petalCenter({
-                targetCenter.x +
-                    std::cos(angle) *
-                    48.0f *
-                    bloom,
-                targetCenter.y +
-                    std::sin(angle) *
-                    35.0f *
-                    bloom
-                });
-
-            drawFilledCircle(
-                window,
-                petalCenter,
-                19.0f * bloom,
-                withAlpha(
-                    sf::Color(175, 55, 205),
-                    185
-                )
-            );
-        }
-
-        drawFloatingParticles(
-            window,
-            targetCenter,
-            elapsed,
-            sf::Color(205, 80, 225),
-            12,
-            80.0f,
-            6.0f
-        );
-
-        return;
-    }
-
-    // --------------------------------------------------
-    // AQUAFIN
-    // --------------------------------------------------
-
-    if (visual == MoveVisual::RiptideRush) {
-        float travel =
-            clamp01(progress / impactProgress);
-
-        sf::Vector2f current =
-            interpolatePosition(
-                attackerCenter,
-                targetCenter,
-                smoothStep(travel)
-            );
-
-        for (int i = 0; i < 5; i++) {
-            drawRing(
-                window,
-                {
-                    current.x -
-                        direction *
-                        static_cast<float>(i) *
-                        25.0f,
-                    current.y +
-                        static_cast<float>(i % 2) *
-                        8.0f
-                },
-                20.0f +
-                static_cast<float>(i) *
-                7.0f,
-                6.0f,
-                withAlpha(
-                    sf::Color(70, 190, 255),
-                    210 - i * 32
-                )
-            );
-        }
-
-        if (progress > impactProgress) {
-            drawSparkBurst(
-                window,
-                targetCenter,
-                75.0f,
-                sf::Color(100, 220, 255),
-                14
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::RazorFin) {
-        float travel =
-            clamp01(progress / impactProgress);
-
-        sf::Vector2f current =
-            interpolatePosition(
-                attackerCenter,
-                targetCenter,
-                smoothStep(travel)
-            );
-
-        drawLine(
-            window,
-            {
-                current.x -
-                    direction * 38.0f,
-                current.y + 45.0f
-            },
-            {
-                current.x +
-                    direction * 38.0f,
-                current.y
-            },
-            9.0f,
-            sf::Color(100, 225, 255)
-        );
-
-        drawLine(
-            window,
-            {
-                current.x +
-                    direction * 38.0f,
-                current.y
-            },
-            {
-                current.x -
-                    direction * 28.0f,
-                current.y - 42.0f
-            },
-            9.0f,
-            sf::Color(100, 225, 255)
-        );
-
-        return;
-    }
-
-    if (visual == MoveVisual::TidalLance) {
-        float travel =
-            clamp01(progress / impactProgress);
-
-        sf::Vector2f currentEnd =
-            interpolatePosition(
-                attackerCenter,
-                targetCenter,
-                smoothStep(travel)
-            );
-
-        drawLine(
-            window,
-            attackerCenter,
-            currentEnd,
-            11.0f,
-            sf::Color(70, 185, 255)
-        );
-
-        drawLine(
-            window,
-            attackerCenter,
-            currentEnd,
-            4.0f,
-            sf::Color::White
-        );
-
-        if (progress > impactProgress) {
-            drawSparkBurst(
-                window,
-                targetCenter,
-                80.0f,
-                sf::Color(85, 205, 255),
-                16
-            );
-
-            for (int i = 0; i < 7; i++) {
-                drawFilledCircle(
-                    window,
-                    {
-                        targetCenter.x +
-                            std::sin(
-                                elapsed * 13.0f +
-                                static_cast<float>(i)
-                            ) * 65.0f,
-                        targetCenter.y +
-                            std::cos(
-                                elapsed * 9.0f +
-                                static_cast<float>(i)
-                            ) * 50.0f
-                    },
-                    6.0f,
-                    sf::Color(100, 215, 255)
-                );
-            }
-        }
-
-        return;
-    }
-
-    // --------------------------------------------------
-    // WILDKIN
-    // --------------------------------------------------
-
-    if (visual == MoveVisual::BurrowRush) {
-        float trailProgress =
-            clamp01(
-                (progress - 0.22f) /
-                0.45f
-            );
-
-        sf::Vector2f trailPosition =
-            interpolatePosition(
-                attackerCenter,
-                targetCenter,
-                smoothStep(trailProgress)
-            );
-
-        for (int i = 0; i < 8; i++) {
-            float dustOffset =
-                static_cast<float>(i) *
-                18.0f;
-
-            drawFilledCircle(
-                window,
-                {
-                    trailPosition.x -
-                        direction * dustOffset,
-                    410.0f +
-                        std::sin(
-                            elapsed * 15.0f +
-                            static_cast<float>(i)
-                        ) * 8.0f
-                },
-                8.0f +
-                static_cast<float>(i % 3) *
-                3.0f,
-                withAlpha(
-                    sf::Color(190, 155, 95),
-                    190 - i * 15
-                )
-            );
-        }
-
-        if (progress > impactProgress) {
-            drawSparkBurst(
-                window,
-                targetCenter,
-                60.0f,
-                sf::Color(205, 170, 105),
-                10
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::SandSlam) {
-        if (progress > 0.28f) {
-            drawFloatingParticles(
-                window,
-                targetCenter,
-                elapsed,
-                sf::Color(205, 170, 100),
-                22,
-                100.0f,
-                8.0f
-            );
-
-            for (int i = 0; i < 4; i++) {
-                drawRing(
-                    window,
-                    targetCenter,
-                    35.0f +
-                    static_cast<float>(i) *
-                    22.0f +
-                    pulse(
-                        elapsed +
-                        static_cast<float>(i),
-                        8.0f
-                    ) * 12.0f,
-                    5.0f,
-                    withAlpha(
-                        sf::Color(210, 175, 105),
-                        170 - i * 25
-                    )
-                );
-            }
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::TremorStomp) {
-        if (progress > 0.25f) {
-            float wave =
-                clamp01(
-                    (progress - 0.25f) /
-                    0.65f
-                );
-
-            for (int i = 0; i < 4; i++) {
-                float radius =
-                    wave * 140.0f +
-                    static_cast<float>(i) * 28.0f;
-
-                drawRing(
-                    window,
-                    {
-                        targetCenter.x,
-                        408.0f
-                    },
-                    radius,
-                    5.0f,
-                    withAlpha(
-                        sf::Color(205, 165, 95),
-                        205 - i * 40
-                    )
-                );
-            }
-
-            for (int i = -2; i <= 2; i++) {
-                drawLine(
-                    window,
-                    {
-                        targetCenter.x +
-                            static_cast<float>(i) *
-                            30.0f,
-                        405.0f
-                    },
-                    {
-                        targetCenter.x +
-                            static_cast<float>(i) *
-                            45.0f,
-                        435.0f
-                    },
-                    5.0f,
-                    sf::Color(120, 90, 55)
-                );
-            }
-        }
-
-        return;
-    }
-
-    // --------------------------------------------------
-    // SHADEGEIST
-    // --------------------------------------------------
-
-    if (visual == MoveVisual::PhantomDive) {
-        float travel =
-            clamp01(progress / impactProgress);
-
-        sf::Vector2f current =
-            interpolatePosition(
-                attackerCenter,
-                targetCenter,
-                smoothStep(travel)
-            );
-
-        for (int i = 1; i <= 5; i++) {
-            drawRing(
-                window,
-                {
-                    current.x -
-                        direction *
-                        static_cast<float>(i) *
-                        30.0f,
-                    current.y
-                },
-                18.0f +
-                static_cast<float>(i) *
-                5.0f,
-                4.0f,
-                withAlpha(
-                    sf::Color(145, 65, 220),
-                    190 - i * 28
-                )
-            );
-        }
-
-        if (progress > impactProgress) {
-            drawRing(
-                window,
-                targetCenter,
-                80.0f *
-                (
-                    1.0f -
-                    clamp01(
-                        (
-                            progress -
-                            impactProgress
-                            ) /
-                        0.25f
-                    )
-                    ),
-                10.0f,
-                sf::Color(165, 75, 235)
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::VoidOrb) {
-        float travel =
-            clamp01(progress / impactProgress);
-
-        sf::Vector2f orbPosition =
-            interpolatePosition(
-                attackerCenter,
-                targetCenter,
-                smoothStep(travel)
-            );
-
-        if (progress < impactProgress) {
-            float orbRadius =
-                20.0f +
-                pulse(elapsed, 11.0f) *
-                10.0f;
-
-            drawFilledCircle(
-                window,
-                orbPosition,
-                orbRadius,
-                sf::Color(50, 25, 80)
-            );
-
-            drawRing(
-                window,
-                orbPosition,
-                orbRadius + 12.0f,
-                6.0f,
-                sf::Color(165, 75, 230)
-            );
-        }
-        else {
-            float collapse =
-                clamp01(
-                    (
-                        progress -
-                        impactProgress
-                        ) /
-                    0.28f
-                );
-
-            drawRing(
-                window,
-                targetCenter,
-                95.0f *
-                (1.0f - collapse),
-                12.0f,
-                withAlpha(
-                    sf::Color(160, 70, 225),
-                    230
-                )
-            );
-
-            drawFilledCircle(
-                window,
-                targetCenter,
-                55.0f *
-                (1.0f - collapse),
-                withAlpha(
-                    sf::Color(40, 20, 65),
-                    230
-                )
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::DreadGaze) {
-        float gaze =
-            smoothStep(
-                clamp01(progress / 0.50f)
-            );
-
-        drawFilledCircle(
-            window,
-            targetCenter,
-            55.0f * gaze,
-            withAlpha(
-                sf::Color(155, 70, 220),
-                150
-            )
-        );
-
-        drawFilledCircle(
-            window,
-            targetCenter,
-            25.0f * gaze,
-            sf::Color(30, 10, 45)
-        );
-
-        drawFilledCircle(
-            window,
-            targetCenter,
-            8.0f * gaze,
-            sf::Color(235, 210, 255)
-        );
-
-        for (int i = 0; i < 3; i++) {
-            drawRing(
-                window,
-                targetCenter,
-                70.0f +
-                static_cast<float>(i) *
-                25.0f +
-                pulse(
-                    elapsed +
-                    static_cast<float>(i),
-                    5.0f
-                ) * 12.0f,
-                4.0f,
-                withAlpha(
-                    sf::Color(150, 70, 220),
-                    170 - i * 35
-                )
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::ShadowTalon) {
-        if (progress > 0.34f) {
-            float slashProgress =
-                clamp01(
-                    (progress - 0.34f) /
-                    0.30f
-                );
-
-            for (int i = -1; i <= 1; i++) {
-                drawLine(
-                    window,
-                    {
-                        targetCenter.x -
-                            direction * 65.0f,
-                        targetCenter.y -
-                            65.0f +
-                            static_cast<float>(i) *
-                            20.0f
-                    },
-                    {
-                        targetCenter.x +
-                            direction *
-                            65.0f *
-                            slashProgress,
-                        targetCenter.y +
-                            60.0f +
-                            static_cast<float>(i) *
-                            20.0f
-                    },
-                    9.0f,
-                    withAlpha(
-                        sf::Color(105, 45, 165),
-                        230
-                    )
-                );
-            }
-        }
-
-        return;
-    }
-
-    // --------------------------------------------------
-    // IRONFANG
-    // --------------------------------------------------
-
-    if (visual == MoveVisual::AlloyCharge) {
-        float travel =
-            clamp01(progress / impactProgress);
-
-        sf::Vector2f current =
-            interpolatePosition(
-                attackerCenter,
-                targetCenter,
-                smoothStep(travel)
-            );
-
-        for (int i = 1; i <= 6; i++) {
-            drawLine(
-                window,
-                {
-                    current.x -
-                        direction *
-                        static_cast<float>(i) *
-                        30.0f,
-                    current.y +
-                        static_cast<float>(i % 2) *
-                        5.0f
-                },
-                {
-                    current.x -
-                        direction *
-                        static_cast<float>(i - 1) *
-                        20.0f,
-                    current.y
-                },
-                7.0f,
-                withAlpha(
-                    sf::Color(200, 215, 230),
-                    210 - i * 25
-                )
-            );
-        }
-
-        if (progress > impactProgress) {
-            drawSparkBurst(
-                window,
-                targetCenter,
-                70.0f,
-                sf::Color(220, 230, 240),
-                14
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::HornBreaker) {
-        if (progress > 0.32f) {
-            float strike =
-                clamp01(
-                    (progress - 0.32f) /
-                    0.32f
-                );
-
-            sf::Vector2f tip =
-                interpolatePosition(
-                    {
-                        targetCenter.x -
-                            direction * 90.0f,
-                        targetCenter.y + 45.0f
-                    },
-                    targetCenter,
-                    strike
-                );
-
-            drawLine(
-                window,
-                {
-                    tip.x -
-                        direction * 70.0f,
-                    tip.y + 35.0f
-                },
-                tip,
-                16.0f,
-                sf::Color(210, 220, 230)
-            );
-
-            drawSparkBurst(
-                window,
-                tip,
-                50.0f * strike,
-                sf::Color::White,
-                8
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::SteelJab) {
-        float travel =
-            clamp01(progress / impactProgress);
-
-        sf::Vector2f end =
-            interpolatePosition(
-                attackerCenter,
-                targetCenter,
-                smoothStep(travel)
-            );
-
-        drawLine(
-            window,
-            attackerCenter,
-            end,
-            8.0f,
-            sf::Color(205, 220, 235)
-        );
-
-        drawLine(
-            window,
-            attackerCenter,
-            end,
-            3.0f,
-            sf::Color::White
-        );
-
-        if (progress > impactProgress - 0.06f) {
-            drawSparkBurst(
-                window,
-                targetCenter,
-                52.0f,
-                sf::Color::White,
-                10
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::Groundbreaker) {
-        if (progress > 0.24f) {
-            float crackProgress =
-                clamp01(
-                    (progress - 0.24f) /
-                    0.60f
-                );
-
-            for (int i = -3; i <= 3; i++) {
-                sf::Vector2f start({
-                    attackerCenter.x +
-                        static_cast<float>(i) *
-                        15.0f,
-                    405.0f
-                    });
-
-                sf::Vector2f middle({
-                    start.x +
-                        direction *
-                        100.0f *
-                        crackProgress,
-                    425.0f +
-                        static_cast<float>(
-                            std::abs(i)
-                        ) * 5.0f
-                    });
-
-                sf::Vector2f end({
-                    start.x +
-                        direction *
-                        220.0f *
-                        crackProgress,
-                    410.0f
-                    });
-
-                drawLine(
-                    window,
-                    start,
-                    middle,
-                    6.0f,
-                    sf::Color(95, 75, 55)
-                );
-
-                drawLine(
-                    window,
-                    middle,
-                    end,
-                    6.0f,
-                    sf::Color(95, 75, 55)
-                );
-            }
-
-            drawRing(
-                window,
-                {
-                    targetCenter.x,
-                    410.0f
-                },
-                40.0f +
-                crackProgress *
-                150.0f,
-                8.0f,
-                withAlpha(
-                    sf::Color(190, 155, 100),
-                    190
-                )
-            );
-        }
-
-        return;
-    }
-
-    // --------------------------------------------------
-    // SKYWYRM
-    // --------------------------------------------------
-
-    if (visual == MoveVisual::WyrmClaw) {
-        if (progress > 0.34f) {
-            float slash =
-                clamp01(
-                    (progress - 0.34f) /
-                    0.32f
-                );
-
-            drawLine(
-                window,
-                {
-                    targetCenter.x - 75.0f,
-                    targetCenter.y - 65.0f
-                },
-                {
-                    targetCenter.x +
-                        75.0f * slash,
-                    targetCenter.y + 65.0f
-                },
-                10.0f,
-                sf::Color(90, 135, 255)
-            );
-
-            drawLine(
-                window,
-                {
-                    targetCenter.x + 75.0f,
-                    targetCenter.y - 65.0f
-                },
-                {
-                    targetCenter.x -
-                        75.0f * slash,
-                    targetCenter.y + 65.0f
-                },
-                10.0f,
-                sf::Color(125, 165, 255)
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::GaleSweep) {
-        float travel =
-            clamp01(progress / impactProgress);
-
-        for (int i = 0; i < 5; i++) {
-            float localProgress =
-                clamp01(
-                    travel -
-                    static_cast<float>(i) *
-                    0.08f
-                );
-
-            sf::Vector2f current =
-                interpolatePosition(
-                    attackerCenter,
-                    targetCenter,
-                    smoothStep(localProgress)
-                );
-
-            drawLine(
-                window,
-                {
-                    current.x -
-                        direction * 45.0f,
-                    current.y -
-                        35.0f +
-                        static_cast<float>(i) *
-                        18.0f
-                },
-                {
-                    current.x +
-                        direction * 45.0f,
-                    current.y -
-                        15.0f +
-                        static_cast<float>(i) *
-                        18.0f
-                },
-                6.0f,
-                withAlpha(
-                    sf::Color(205, 235, 255),
-                    215 - i * 28
-                )
-            );
-        }
-
-        return;
-    }
-
-    if (visual == MoveVisual::AzureBeam) {
-        float chargeProgress =
-            clamp01(progress / 0.42f);
-
-        float chargeRadius =
-            12.0f +
-            chargeProgress * 35.0f;
-
-        sf::Vector2f chargeCenter({
-            attackerCenter.x +
-                direction * 45.0f,
-            attackerCenter.y
-            });
-
-        drawFilledCircle(
-            window,
-            chargeCenter,
-            chargeRadius,
-            withAlpha(
-                sf::Color(80, 135, 255),
-                220
-            )
-        );
-
-        drawRing(
-            window,
-            chargeCenter,
-            chargeRadius + 15.0f,
-            7.0f,
-            sf::Color(170, 205, 255)
-        );
-
-        if (progress > 0.42f) {
-            float beamProgress =
-                clamp01(
-                    (progress - 0.42f) /
-                    0.24f
-                );
-
-            sf::Vector2f beamEnd =
-                interpolatePosition(
-                    chargeCenter,
-                    targetCenter,
-                    beamProgress
-                );
-
-            drawLine(
-                window,
-                chargeCenter,
-                beamEnd,
-                34.0f +
-                pulse(elapsed, 28.0f) *
-                12.0f,
-                withAlpha(
-                    sf::Color(75, 125, 255),
-                    225
-                )
-            );
-
-            drawLine(
-                window,
-                chargeCenter,
-                beamEnd,
-                13.0f,
-                sf::Color(220, 235, 255)
-            );
-        }
-
-        if (progress > impactProgress) {
-            drawSparkBurst(
-                window,
-                targetCenter,
-                95.0f,
-                sf::Color(110, 160, 255),
-                16
-            );
-        }
-
-        return;
-    }
-
-    // --------------------------------------------------
-    // Generic fallback
-    // --------------------------------------------------
-
-    float travel =
-        clamp01(progress / impactProgress);
-
-    sf::Vector2f effectPosition =
-        interpolatePosition(
-            attackerCenter,
-            targetCenter,
-            smoothStep(travel)
-        );
-
-    drawFilledCircle(
-        window,
-        effectPosition,
-        18.0f,
-        color
-    );
 }
 
 // ==================================================
@@ -2774,13 +73,13 @@ int main()
 
     window.setFramerateLimit(60);
 
+    // ==================================================
+    // Font
+    // ==================================================
+
     sf::Font font;
 
-    if (
-        !font.openFromFile(
-            "assets/fonts/main.ttf"
-        )
-        ) {
+    if (!font.openFromFile("assets/fonts/main.ttf")) {
         std::cout
             << "Failed to load font: "
             << "assets/fonts/main.ttf\n";
@@ -2788,10 +87,47 @@ int main()
         return -1;
     }
 
+    // ==================================================
+    // Audio
+    // ==================================================
+
+    AudioManager audio;
+    audio.load();
+
+    // ==================================================
+    // Profile / screen state
+    // ==================================================
+
     Screen currentScreen =
         Screen::MainMenu;
 
+    PlayerProfile profile =
+        loadProfile();
+
+    std::string enteredPlayerName =
+        profile.playerName;
+
+    Screen nameEntryReturnScreen =
+        Screen::MainMenu;
+
+    if (
+        profile.playerName.empty() ||
+        profile.playerName == "Player"
+        ) {
+        enteredPlayerName.clear();
+
+        currentScreen =
+            Screen::NameEntry;
+    }
+
+    bool profileUpdatedForBattle =
+        false;
+
     std::vector<std::string> battleLog;
+
+    // ==================================================
+    // Battle state
+    // ==================================================
 
     int difficulty = 2;
 
@@ -2813,9 +149,9 @@ int main()
         difficulty
     );
 
-    // --------------------------------------------------
+    // ==================================================
     // Animation state
-    // --------------------------------------------------
+    // ==================================================
 
     bool animationActive = false;
     bool playerIsAttacking = true;
@@ -2830,12 +166,15 @@ int main()
 
     int activePlayerMoveIndex = -1;
 
-    float activeMoveDuration = 0.85f;
-    float activeImpactProgress = 0.58f;
+    float activeMoveDuration =
+        0.85f;
 
-    // --------------------------------------------------
-    // Default creature positions
-    // --------------------------------------------------
+    float activeImpactProgress =
+        0.58f;
+
+    // ==================================================
+    // Creature default positions
+    // ==================================================
 
     const sf::Vector2f playerSpriteDefault({
         180.0f,
@@ -2867,9 +206,9 @@ int main()
         225.0f
         });
 
-    // --------------------------------------------------
-    // Textures and sprites
-    // --------------------------------------------------
+    // ==================================================
+    // Textures
+    // ==================================================
 
     sf::Texture playerTexture;
     sf::Texture enemyTexture;
@@ -2884,9 +223,17 @@ int main()
             "assets/images/background.png"
         );
 
-    sf::Sprite playerSprite(playerTexture);
-    sf::Sprite enemySprite(enemyTexture);
-    sf::Sprite backgroundSprite(backgroundTexture);
+    sf::Sprite playerSprite(
+        playerTexture
+    );
+
+    sf::Sprite enemySprite(
+        enemyTexture
+    );
+
+    sf::Sprite backgroundSprite(
+        backgroundTexture
+    );
 
     if (backgroundTextureLoaded) {
         backgroundSprite.setPosition({
@@ -2911,9 +258,9 @@ int main()
         sf::Color(32, 36, 48)
     );
 
-    // --------------------------------------------------
+    // ==================================================
     // Main menu
-    // --------------------------------------------------
+    // ==================================================
 
     sf::Text title(
         font,
@@ -2959,6 +306,35 @@ int main()
         sf::Color::White
     );
 
+    sf::RectangleShape profileButton({
+        340.0f,
+        70.0f
+        });
+
+    profileButton.setPosition({
+        470.0f,
+        360.0f
+        });
+
+    profileButton.setFillColor(
+        sf::Color(90, 90, 120)
+    );
+
+    sf::Text profileButtonText(
+        font,
+        "View Profile",
+        30
+    );
+
+    profileButtonText.setPosition({
+        550.0f,
+        378.0f
+        });
+
+    profileButtonText.setFillColor(
+        sf::Color::White
+    );
+
     sf::RectangleShape exitButton({
         340.0f,
         70.0f
@@ -2966,7 +342,7 @@ int main()
 
     exitButton.setPosition({
         470.0f,
-        360.0f
+        460.0f
         });
 
     exitButton.setFillColor(
@@ -2981,16 +357,16 @@ int main()
 
     exitText.setPosition({
         610.0f,
-        378.0f
+        478.0f
         });
 
     exitText.setFillColor(
         sf::Color::White
     );
 
-    // --------------------------------------------------
+    // ==================================================
     // Difficulty screen
-    // --------------------------------------------------
+    // ==================================================
 
     sf::Text difficultyTitle(
         font,
@@ -3123,9 +499,9 @@ int main()
         sf::Color::White
     );
 
-    // --------------------------------------------------
-    // Creature selection
-    // --------------------------------------------------
+    // ==================================================
+    // Creature select
+    // ==================================================
 
     sf::Text selectTitle(
         font,
@@ -3205,9 +581,9 @@ int main()
         );
     }
 
-    // --------------------------------------------------
+    // ==================================================
     // Result screen
-    // --------------------------------------------------
+    // ==================================================
 
     sf::Text resultTitle(
         font,
@@ -3297,9 +673,262 @@ int main()
         sf::Color::White
     );
 
-    // --------------------------------------------------
-    // Battle background and fallback creatures
-    // --------------------------------------------------
+    // ==================================================
+    // Profile screen
+    // ==================================================
+
+    sf::Text profileTitle(
+        font,
+        "Player Profile",
+        42
+    );
+
+    profileTitle.setPosition({
+        480.0f,
+        70.0f
+        });
+
+    profileTitle.setFillColor(
+        sf::Color::White
+    );
+
+    std::vector<sf::Text> profileTexts;
+
+    profileTexts.reserve(8);
+
+    for (int i = 0; i < 8; i++) {
+        sf::Text profileLine(
+            font,
+            "",
+            24
+        );
+
+        profileLine.setPosition({
+            390.0f,
+            150.0f +
+                static_cast<float>(i) *
+                48.0f
+            });
+
+        profileLine.setFillColor(
+            sf::Color::White
+        );
+
+        profileTexts.push_back(
+            profileLine
+        );
+    }
+
+    sf::RectangleShape profileChangeNameButton({
+        260.0f,
+        60.0f
+        });
+
+    profileChangeNameButton.setPosition({
+        350.0f,
+        570.0f
+        });
+
+    profileChangeNameButton.setFillColor(
+        sf::Color(90, 90, 120)
+    );
+
+    sf::Text profileChangeNameText(
+        font,
+        "Change Name",
+        26
+    );
+
+    profileChangeNameText.setPosition({
+        400.0f,
+        586.0f
+        });
+
+    profileChangeNameText.setFillColor(
+        sf::Color::White
+    );
+
+    sf::RectangleShape profileBackButton({
+        260.0f,
+        60.0f
+        });
+
+    profileBackButton.setPosition({
+        670.0f,
+        570.0f
+        });
+
+    profileBackButton.setFillColor(
+        sf::Color(90, 90, 120)
+    );
+
+    sf::Text profileBackText(
+        font,
+        "Back",
+        28
+    );
+
+    profileBackText.setPosition({
+        770.0f,
+        585.0f
+        });
+
+    profileBackText.setFillColor(
+        sf::Color::White
+    );
+
+    updateProfileTexts(
+        profile,
+        profileTexts
+    );
+
+    // ==================================================
+    // Name entry screen
+    // ==================================================
+
+    sf::Text nameEntryTitle(
+        font,
+        "Enter Player Name",
+        42
+    );
+
+    nameEntryTitle.setPosition({
+        445.0f,
+        150.0f
+        });
+
+    nameEntryTitle.setFillColor(
+        sf::Color::White
+    );
+
+    sf::RectangleShape nameInputBox({
+        500.0f,
+        70.0f
+        });
+
+    nameInputBox.setPosition({
+        390.0f,
+        280.0f
+        });
+
+    nameInputBox.setFillColor(
+        sf::Color(50, 50, 70)
+    );
+
+    nameInputBox.setOutlineThickness(
+        2.0f
+    );
+
+    nameInputBox.setOutlineColor(
+        sf::Color::White
+    );
+
+    sf::Text nameInputText(
+        font,
+        enteredPlayerName,
+        28
+    );
+
+    nameInputText.setPosition({
+        415.0f,
+        298.0f
+        });
+
+    nameInputText.setFillColor(
+        sf::Color::White
+    );
+
+    sf::Text nameEntryHint(
+        font,
+        "Type your name, then press Enter or Save",
+        21
+    );
+
+    nameEntryHint.setPosition({
+        420.0f,
+        375.0f
+        });
+
+    nameEntryHint.setFillColor(
+        sf::Color(210, 210, 220)
+    );
+
+    sf::Text nameLengthHint(
+        font,
+        "Maximum 18 characters",
+        18
+    );
+
+    nameLengthHint.setPosition({
+        520.0f,
+        410.0f
+        });
+
+    nameLengthHint.setFillColor(
+        sf::Color(175, 175, 190)
+    );
+
+    sf::RectangleShape nameSaveButton({
+        220.0f,
+        60.0f
+        });
+
+    nameSaveButton.setPosition({
+        395.0f,
+        480.0f
+        });
+
+    nameSaveButton.setFillColor(
+        sf::Color(90, 90, 120)
+    );
+
+    sf::Text nameSaveText(
+        font,
+        "Save",
+        28
+    );
+
+    nameSaveText.setPosition({
+        470.0f,
+        495.0f
+        });
+
+    nameSaveText.setFillColor(
+        sf::Color::White
+    );
+
+    sf::RectangleShape nameCancelButton({
+        220.0f,
+        60.0f
+        });
+
+    nameCancelButton.setPosition({
+        665.0f,
+        480.0f
+        });
+
+    nameCancelButton.setFillColor(
+        sf::Color(90, 90, 120)
+    );
+
+    sf::Text nameCancelText(
+        font,
+        "Cancel",
+        28
+    );
+
+    nameCancelText.setPosition({
+        730.0f,
+        495.0f
+        });
+
+    nameCancelText.setFillColor(
+        sf::Color::White
+    );
+
+    // ==================================================
+    // Battle field
+    // ==================================================
 
     sf::RectangleShape ground({
         1000.0f,
@@ -3371,9 +1000,9 @@ int main()
         enemyBody
     );
 
-    // --------------------------------------------------
+    // ==================================================
     // HP bars
-    // --------------------------------------------------
+    // ==================================================
 
     const float hpBarMaximumWidth =
         300.0f;
@@ -3426,9 +1055,9 @@ int main()
         70.0f
         });
 
-    // --------------------------------------------------
+    // ==================================================
     // Move buttons
-    // --------------------------------------------------
+    // ==================================================
 
     sf::RectangleShape moveButtons[4];
 
@@ -3468,9 +1097,9 @@ int main()
         );
     }
 
-    // --------------------------------------------------
-    // Battle text and status indicators
-    // --------------------------------------------------
+    // ==================================================
+    // Battle text
+    // ==================================================
 
     sf::Text battleTitle(
         font,
@@ -3620,9 +1249,9 @@ int main()
         sf::Color::White
     );
 
-    // --------------------------------------------------
-    // Battle log panel
-    // --------------------------------------------------
+    // ==================================================
+    // Battle log
+    // ==================================================
 
     sf::RectangleShape battleLogPanel({
         490.0f,
@@ -3703,134 +1332,175 @@ int main()
     }
 
     // ==================================================
-    // Local helper lambdas
+    // Reset creature visuals
     // ==================================================
 
-    auto resetCreatureVisualState = [&]() {
-        setCreaturePosition(
-            playerSprite,
-            playerBody,
-            playerEye,
-            playerTextureLoaded,
-            playerSpriteDefault,
-            playerBodyDefault,
-            playerEyeDefault
-        );
+    auto resetCreatureVisualState = [&]()
+        {
+            setCreaturePosition(
+                playerSprite,
+                playerBody,
+                playerEye,
+                playerTextureLoaded,
+                playerSpriteDefault,
+                playerBodyDefault,
+                playerEyeDefault
+            );
 
-        setCreaturePosition(
-            enemySprite,
-            enemyBody,
-            enemyEye,
-            enemyTextureLoaded,
-            enemySpriteDefault,
-            enemyBodyDefault,
-            enemyEyeDefault
-        );
+            setCreaturePosition(
+                enemySprite,
+                enemyBody,
+                enemyEye,
+                enemyTextureLoaded,
+                enemySpriteDefault,
+                enemyBodyDefault,
+                enemyEyeDefault
+            );
 
-        setCreatureColor(
-            playerSprite,
-            playerBody,
-            playerTextureLoaded,
-            playerTextureLoaded
-            ? sf::Color::White
-            : getCreatureFallbackColor(
+            setCreatureColor(
+                playerSprite,
+                playerBody,
+                playerTextureLoaded,
+                playerTextureLoaded
+                ? sf::Color::White
+                : getCreatureFallbackColor(
+                    battle
+                    .getPlayerPokemon()
+                    .getName()
+                )
+            );
+
+            setCreatureColor(
+                enemySprite,
+                enemyBody,
+                enemyTextureLoaded,
+                enemyTextureLoaded
+                ? sf::Color::White
+                : getCreatureFallbackColor(
+                    battle
+                    .getEnemyPokemon()
+                    .getName()
+                )
+            );
+        };
+
+    // ==================================================
+    // Refresh UI
+    // ==================================================
+
+    auto refreshBattleUi = [&]()
+        {
+            updateBattleText(
+                battle,
+                playerNameText,
+                enemyNameText,
+                playerHpText,
+                enemyHpText,
+                moveTexts[0],
+                moveTexts[1],
+                moveTexts[2],
+                moveTexts[3],
+                playerMaxHp,
+                enemyMaxHp
+            );
+
+            updateHpBar(
+                playerHpFill,
                 battle
                 .getPlayerPokemon()
-                .getName()
-            )
-        );
+                .getHp(),
+                playerMaxHp,
+                hpBarMaximumWidth
+            );
 
-        setCreatureColor(
-            enemySprite,
-            enemyBody,
-            enemyTextureLoaded,
-            enemyTextureLoaded
-            ? sf::Color::White
-            : getCreatureFallbackColor(
+            updateHpBar(
+                enemyHpFill,
                 battle
                 .getEnemyPokemon()
-                .getName()
-            )
-        );
+                .getHp(),
+                enemyMaxHp,
+                hpBarMaximumWidth
+            );
+
+            updateStatusDisplay(
+                battle,
+                playerStatusText,
+                enemyStatusText,
+                playerStatusIcon,
+                enemyStatusIcon
+            );
         };
 
-    auto refreshBattleUi = [&]() {
-        updateBattleText(
-            battle,
-            playerNameText,
-            enemyNameText,
-            playerHpText,
-            enemyHpText,
-            moveTexts[0],
-            moveTexts[1],
-            moveTexts[2],
-            moveTexts[3],
-            playerMaxHp,
-            enemyMaxHp
-        );
+    // ==================================================
+    // Result
+    // ==================================================
 
-        updateHpBar(
-            playerHpFill,
-            battle
-            .getPlayerPokemon()
-            .getHp(),
-            playerMaxHp,
-            hpBarMaximumWidth
-        );
+    auto showBattleResult = [&]()
+        {
+            resetCreatureVisualState();
 
-        updateHpBar(
-            enemyHpFill,
-            battle
-            .getEnemyPokemon()
-            .getHp(),
-            enemyMaxHp,
-            hpBarMaximumWidth
-        );
+            animationActive = false;
+            impactApplied = false;
+            activePlayerMoveIndex = -1;
 
-        updateStatusDisplay(
-            battle,
-            playerStatusText,
-            enemyStatusText,
-            playerStatusIcon,
-            enemyStatusIcon
-        );
+            if (battle.didPlayerWin()) {
+                resultTitle.setString(
+                    "You Won!"
+                );
+
+                resultMessage.setString(
+                    battle
+                    .getEnemyPokemon()
+                    .getName() +
+                    " was defeated."
+                );
+            }
+            else {
+                resultTitle.setString(
+                    "You Lost!"
+                );
+
+                resultMessage.setString(
+                    battle
+                    .getPlayerPokemon()
+                    .getName() +
+                    " was defeated."
+                );
+            }
+
+            // Only execute result events once.
+            if (!profileUpdatedForBattle) {
+
+                if (battle.didPlayerWin()) {
+                    audio.playWin();
+                }
+                else {
+                    audio.playLose();
+                }
+
+                updateProfileAfterBattleSFML(
+                    profile,
+                    battle.getStats(),
+                    battle.didPlayerWin(),
+                    battle.getRound()
+                );
+
+                updateProfileTexts(
+                    profile,
+                    profileTexts
+                );
+
+                profileUpdatedForBattle =
+                    true;
+            }
+
+            currentScreen =
+                Screen::ResultScreen;
         };
 
-    auto showBattleResult = [&]() {
-        resetCreatureVisualState();
-
-        animationActive = false;
-        impactApplied = false;
-        activePlayerMoveIndex = -1;
-
-        if (battle.didPlayerWin()) {
-            resultTitle.setString(
-                "You Won!"
-            );
-
-            resultMessage.setString(
-                battle
-                .getEnemyPokemon()
-                .getName() +
-                " was defeated."
-            );
-        }
-        else {
-            resultTitle.setString(
-                "You Lost!"
-            );
-
-            resultMessage.setString(
-                battle
-                .getPlayerPokemon()
-                .getName() +
-                " was defeated."
-            );
-        }
-
-        currentScreen =
-            Screen::ResultScreen;
-        };
+    // ==================================================
+    // Move animation
+    // ==================================================
 
     auto beginMoveAnimation =
         [&](
@@ -3844,7 +1514,9 @@ int main()
             activeMove = move;
 
             activeVisual =
-                getMoveVisual(move.name);
+                getMoveVisual(
+                    move.name
+                );
 
             playerIsAttacking =
                 isPlayerMove;
@@ -3853,7 +1525,9 @@ int main()
                 playerMoveIndex;
 
             activeMoveDuration =
-                getMoveDuration(activeVisual);
+                getMoveDuration(
+                    activeVisual
+                );
 
             activeImpactProgress =
                 getMoveImpactProgress(
@@ -3862,6 +1536,11 @@ int main()
 
             impactApplied = false;
             animationActive = true;
+
+            // Elemental move sound.
+            audio.playMove(
+                activeMove.type
+            );
 
             std::string attackerName;
 
@@ -3904,206 +1583,248 @@ int main()
             animationClock.restart();
         };
 
-    auto finishRoundAfterEnemy = [&]() {
-        if (!battle.isBattleOver()) {
-            int playerHpBeforeStatus =
-                battle
-                .getPlayerPokemon()
-                .getHp();
+    // ==================================================
+    // End round
+    // ==================================================
 
-            int enemyHpBeforeStatus =
-                battle
-                .getEnemyPokemon()
-                .getHp();
+    auto finishRoundAfterEnemy = [&]()
+        {
+            if (!battle.isBattleOver()) {
 
-            Status playerStatusBefore =
-                battle
-                .getPlayerPokemon()
-                .getStatus();
-
-            Status enemyStatusBefore =
-                battle
-                .getEnemyPokemon()
-                .getStatus();
-
-            battle.applyEndRoundEffects();
-
-            int playerHpAfterStatus =
-                battle
-                .getPlayerPokemon()
-                .getHp();
-
-            int enemyHpAfterStatus =
-                battle
-                .getEnemyPokemon()
-                .getHp();
-
-            Status playerStatusAfter =
-                battle
-                .getPlayerPokemon()
-                .getStatus();
-
-            Status enemyStatusAfter =
-                battle
-                .getEnemyPokemon()
-                .getStatus();
-
-            int playerStatusDamage =
-                playerHpBeforeStatus -
-                playerHpAfterStatus;
-
-            int enemyStatusDamage =
-                enemyHpBeforeStatus -
-                enemyHpAfterStatus;
-
-            if (playerStatusDamage > 0) {
-                addBattleLog(
-                    battleLog,
+                int playerHpBeforeStatus =
                     battle
                     .getPlayerPokemon()
-                    .getName() +
-                    " took " +
-                    std::to_string(
-                        playerStatusDamage
-                    ) +
-                    " status damage."
-                );
-            }
+                    .getHp();
 
-            if (enemyStatusDamage > 0) {
-                addBattleLog(
-                    battleLog,
+                int enemyHpBeforeStatus =
                     battle
                     .getEnemyPokemon()
-                    .getName() +
-                    " took " +
-                    std::to_string(
-                        enemyStatusDamage
-                    ) +
-                    " status damage."
-                );
-            }
+                    .getHp();
 
-            if (
-                playerStatusBefore != Status::None &&
-                playerStatusAfter == Status::None
-                ) {
-                addBattleLog(
-                    battleLog,
+                Status playerStatusBefore =
                     battle
                     .getPlayerPokemon()
-                    .getName() +
-                    " recovered from " +
-                    getStatusConditionName(
-                        playerStatusBefore
-                    ) +
-                    "."
-                );
-            }
+                    .getStatus();
 
-            if (
-                enemyStatusBefore != Status::None &&
-                enemyStatusAfter == Status::None
-                ) {
-                addBattleLog(
-                    battleLog,
+                Status enemyStatusBefore =
                     battle
                     .getEnemyPokemon()
-                    .getName() +
-                    " recovered from " +
-                    getStatusConditionName(
-                        enemyStatusBefore
-                    ) +
-                    "."
+                    .getStatus();
+
+                battle.applyEndRoundEffects();
+
+                int playerHpAfterStatus =
+                    battle
+                    .getPlayerPokemon()
+                    .getHp();
+
+                int enemyHpAfterStatus =
+                    battle
+                    .getEnemyPokemon()
+                    .getHp();
+
+                Status playerStatusAfter =
+                    battle
+                    .getPlayerPokemon()
+                    .getStatus();
+
+                Status enemyStatusAfter =
+                    battle
+                    .getEnemyPokemon()
+                    .getStatus();
+
+                int playerStatusDamage =
+                    playerHpBeforeStatus -
+                    playerHpAfterStatus;
+
+                int enemyStatusDamage =
+                    enemyHpBeforeStatus -
+                    enemyHpAfterStatus;
+
+                if (playerStatusDamage > 0) {
+                    addBattleLog(
+                        battleLog,
+                        battle
+                        .getPlayerPokemon()
+                        .getName() +
+                        " took " +
+                        std::to_string(
+                            playerStatusDamage
+                        ) +
+                        " status damage."
+                    );
+                }
+
+                if (enemyStatusDamage > 0) {
+                    addBattleLog(
+                        battleLog,
+                        battle
+                        .getEnemyPokemon()
+                        .getName() +
+                        " took " +
+                        std::to_string(
+                            enemyStatusDamage
+                        ) +
+                        " status damage."
+                    );
+                }
+
+                if (
+                    playerStatusBefore != Status::None &&
+                    playerStatusAfter == Status::None
+                    ) {
+                    addBattleLog(
+                        battleLog,
+                        battle
+                        .getPlayerPokemon()
+                        .getName() +
+                        " recovered from " +
+                        getStatusConditionName(
+                            playerStatusBefore
+                        ) +
+                        "."
+                    );
+                }
+
+                if (
+                    enemyStatusBefore != Status::None &&
+                    enemyStatusAfter == Status::None
+                    ) {
+                    addBattleLog(
+                        battleLog,
+                        battle
+                        .getEnemyPokemon()
+                        .getName() +
+                        " recovered from " +
+                        getStatusConditionName(
+                            enemyStatusBefore
+                        ) +
+                        "."
+                    );
+                }
+
+                updateBattleLogTexts(
+                    battleLog,
+                    battleLogTexts
                 );
             }
 
-            updateBattleLogTexts(
-                battleLog,
-                battleLogTexts
-            );
-        }
+            refreshBattleUi();
 
-        refreshBattleUi();
+            if (battle.isBattleOver()) {
+                showBattleResult();
+                return;
+            }
 
-        if (battle.isBattleOver()) {
-            showBattleResult();
-            return;
-        }
+            animationActive = false;
+            impactApplied = false;
+            activePlayerMoveIndex = -1;
 
-        animationActive = false;
-        impactApplied = false;
-        activePlayerMoveIndex = -1;
-
-        resetCreatureVisualState();
-
-        battleMessage.setString(
-            "Round complete. Choose another move."
-        );
-        };
-
-    auto beginEnemyTurn = [&]() {
-        if (battle.isBattleOver()) {
-            showBattleResult();
-            return;
-        }
-
-        bool enemyCanAttack =
-            battle.prepareEnemyTurn();
-
-        if (!enemyCanAttack) {
-            std::string skippedMessage =
-                battle
-                .getEnemyPokemon()
-                .getName() +
-                " could not attack.";
+            resetCreatureVisualState();
 
             battleMessage.setString(
-                skippedMessage
+                "Round complete. Choose another move."
+            );
+        };
+
+    // ==================================================
+    // Enemy turn
+    // ==================================================
+
+    auto beginEnemyTurn = [&]()
+        {
+            if (battle.isBattleOver()) {
+                showBattleResult();
+                return;
+            }
+
+            bool enemyCanAttack =
+                battle.prepareEnemyTurn();
+
+            if (!enemyCanAttack) {
+
+                std::string skippedMessage =
+                    battle
+                    .getEnemyPokemon()
+                    .getName() +
+                    " could not attack.";
+
+                battleMessage.setString(
+                    skippedMessage
+                );
+
+                addBattleLog(
+                    battleLog,
+                    skippedMessage
+                );
+
+                updateBattleLogTexts(
+                    battleLog,
+                    battleLogTexts
+                );
+
+                finishRoundAfterEnemy();
+
+                return;
+            }
+
+            Move enemyMove =
+                battle.chooseEnemyMove();
+
+            beginMoveAnimation(
+                enemyMove,
+                false,
+                -1
+            );
+        };
+
+    // ==================================================
+    // Save name
+    // ==================================================
+
+    auto saveEnteredPlayerName = [&]()
+        {
+            if (enteredPlayerName.empty()) {
+                return;
+            }
+
+            profile.playerName =
+                enteredPlayerName;
+
+            saveProfile(
+                profile
             );
 
-            addBattleLog(
-                battleLog,
-                skippedMessage
+            updateProfileTexts(
+                profile,
+                profileTexts
             );
 
-            updateBattleLogTexts(
-                battleLog,
-                battleLogTexts
-            );
-
-            finishRoundAfterEnemy();
-            return;
-        }
-
-        Move enemyMove =
-            battle.chooseEnemyMove();
-
-        beginMoveAnimation(
-            enemyMove,
-            false,
-            -1
-        );
+            currentScreen =
+                nameEntryReturnScreen;
         };
 
     refreshBattleUi();
 
     // ==================================================
-    // Main loop
+    // Game loop
     // ==================================================
 
     while (window.isOpen()) {
+
         sf::Vector2i mousePixelPosition =
-            sf::Mouse::getPosition(window);
+            sf::Mouse::getPosition(
+                window
+            );
 
         sf::Vector2f mousePosition =
             window.mapPixelToCoords(
                 mousePixelPosition
             );
 
-        // --------------------------------------------------
-        // Hover states
-        // --------------------------------------------------
+        // ==================================================
+        // Hover
+        // ==================================================
 
         if (
             currentScreen ==
@@ -4111,6 +1832,11 @@ int main()
             ) {
             updateButtonHover(
                 startButton,
+                mousePosition
+            );
+
+            updateButtonHover(
+                profileButton,
                 mousePosition
             );
 
@@ -4189,20 +1915,103 @@ int main()
             );
         }
 
-        // --------------------------------------------------
+        if (
+            currentScreen ==
+            Screen::ProfileScreen
+            ) {
+            updateButtonHover(
+                profileChangeNameButton,
+                mousePosition
+            );
+
+            updateButtonHover(
+                profileBackButton,
+                mousePosition
+            );
+        }
+
+        if (
+            currentScreen ==
+            Screen::NameEntry
+            ) {
+            updateButtonHover(
+                nameSaveButton,
+                mousePosition,
+                !enteredPlayerName.empty()
+            );
+
+            updateButtonHover(
+                nameCancelButton,
+                mousePosition
+            );
+        }
+
+        // ==================================================
         // Events
-        // --------------------------------------------------
+        // ==================================================
 
         while (
             const std::optional<sf::Event> event =
             window.pollEvent()
             ) {
+
             if (
                 event->is<
                 sf::Event::Closed
                 >()
                 ) {
                 window.close();
+            }
+
+            // --------------------------------------------------
+            // Name typing
+            // --------------------------------------------------
+
+            if (
+                currentScreen ==
+                Screen::NameEntry
+                ) {
+                const auto* textEntered =
+                    event->getIf<
+                    sf::Event::TextEntered
+                    >();
+
+                if (textEntered != nullptr) {
+
+                    char32_t unicode =
+                        textEntered->unicode;
+
+                    if (unicode == 8) {
+
+                        if (
+                            !enteredPlayerName.empty()
+                            ) {
+                            enteredPlayerName.pop_back();
+                        }
+                    }
+
+                    else if (
+                        unicode == 13 ||
+                        unicode == 10
+                        ) {
+                        saveEnteredPlayerName();
+                    }
+
+                    else if (
+                        unicode >= 32 &&
+                        unicode <= 126 &&
+                        enteredPlayerName.size() < 18
+                        ) {
+                        enteredPlayerName +=
+                            static_cast<char>(
+                                unicode
+                                );
+                    }
+
+                    nameInputText.setString(
+                        enteredPlayerName
+                    );
+                }
             }
 
             const auto* mouseButton =
@@ -4223,85 +2032,131 @@ int main()
                     mouseButton->position
                 );
 
+            // ==================================================
             // Main menu
+            // ==================================================
+
             if (
                 currentScreen ==
                 Screen::MainMenu
                 ) {
+
                 if (
                     isButtonClicked(
                         startButton,
                         clickPosition
                     )
                     ) {
+                    audio.playButton();
+
                     currentScreen =
                         Screen::DifficultySelect;
                 }
+
+                else if (
+                    isButtonClicked(
+                        profileButton,
+                        clickPosition
+                    )
+                    ) {
+                    audio.playButton();
+
+                    updateProfileTexts(
+                        profile,
+                        profileTexts
+                    );
+
+                    currentScreen =
+                        Screen::ProfileScreen;
+                }
+
                 else if (
                     isButtonClicked(
                         exitButton,
                         clickPosition
                     )
                     ) {
+                    audio.playButton();
+
                     window.close();
                 }
             }
 
+            // ==================================================
             // Difficulty
+            // ==================================================
+
             else if (
                 currentScreen ==
                 Screen::DifficultySelect
                 ) {
+
                 if (
                     isButtonClicked(
                         easyButton,
                         clickPosition
                     )
                     ) {
+                    audio.playButton();
+
                     difficulty = 1;
 
                     currentScreen =
                         Screen::CreatureSelect;
                 }
+
                 else if (
                     isButtonClicked(
                         normalButton,
                         clickPosition
                     )
                     ) {
+                    audio.playButton();
+
                     difficulty = 2;
 
                     currentScreen =
                         Screen::CreatureSelect;
                 }
+
                 else if (
                     isButtonClicked(
                         hardButton,
                         clickPosition
                     )
                     ) {
+                    audio.playButton();
+
                     difficulty = 3;
 
                     currentScreen =
                         Screen::CreatureSelect;
                 }
+
                 else if (
                     isButtonClicked(
                         backButton,
                         clickPosition
                     )
                     ) {
+                    audio.playButton();
+
                     currentScreen =
                         Screen::MainMenu;
                 }
             }
 
+            // ==================================================
             // Creature selection
+            // ==================================================
+
             else if (
                 currentScreen ==
                 Screen::CreatureSelect
                 ) {
+
                 for (int i = 0; i < 8; i++) {
+
                     if (
                         !isButtonClicked(
                             creatureButtons[i],
@@ -4310,6 +2165,8 @@ int main()
                         ) {
                         continue;
                     }
+
+                    audio.playButton();
 
                     int playerChoice =
                         i + 1;
@@ -4346,6 +2203,9 @@ int main()
                         enemyCreature,
                         difficulty
                     );
+
+                    profileUpdatedForBattle =
+                        false;
 
                     battleLog.clear();
 
@@ -4384,6 +2244,7 @@ int main()
                     activePlayerMoveIndex = -1;
 
                     resetCreatureVisualState();
+
                     refreshBattleUi();
 
                     battleMessage.setString(
@@ -4397,23 +2258,31 @@ int main()
                 }
             }
 
-            // Battle move selection
+            // ==================================================
+            // Battle move
+            // ==================================================
+
             else if (
                 currentScreen ==
                 Screen::BattleScreen &&
                 !animationActive &&
                 !battle.isBattleOver()
                 ) {
-                int selectedMoveIndex = -1;
+
+                int selectedMoveIndex =
+                    -1;
 
                 for (int i = 0; i < 4; i++) {
+
                     if (
                         isButtonClicked(
                             moveButtons[i],
                             clickPosition
                         )
                         ) {
-                        selectedMoveIndex = i;
+                        selectedMoveIndex =
+                            i;
+
                         break;
                     }
                 }
@@ -4425,6 +2294,8 @@ int main()
                     .getPlayerPokemon()
                     .getMoveCount()
                     ) {
+                    audio.playButton();
+
                     Move selectedMove =
                         battle
                         .getPlayerPokemon()
@@ -4440,28 +2311,126 @@ int main()
                 }
             }
 
+            // ==================================================
             // Result screen
+            // ==================================================
+
             else if (
                 currentScreen ==
                 Screen::ResultScreen
                 ) {
+
                 if (
                     isButtonClicked(
                         playAgainButton,
                         clickPosition
                     )
                     ) {
+                    audio.playButton();
+
                     currentScreen =
                         Screen::DifficultySelect;
                 }
+
                 else if (
                     isButtonClicked(
                         resultMenuButton,
                         clickPosition
                     )
                     ) {
+                    audio.playButton();
+
                     currentScreen =
                         Screen::MainMenu;
+                }
+            }
+
+            // ==================================================
+            // Profile screen
+            // ==================================================
+
+            else if (
+                currentScreen ==
+                Screen::ProfileScreen
+                ) {
+
+                if (
+                    isButtonClicked(
+                        profileChangeNameButton,
+                        clickPosition
+                    )
+                    ) {
+                    audio.playButton();
+
+                    enteredPlayerName =
+                        profile.playerName;
+
+                    nameInputText.setString(
+                        enteredPlayerName
+                    );
+
+                    nameEntryTitle.setString(
+                        "Change Player Name"
+                    );
+
+                    nameEntryReturnScreen =
+                        Screen::ProfileScreen;
+
+                    currentScreen =
+                        Screen::NameEntry;
+                }
+
+                else if (
+                    isButtonClicked(
+                        profileBackButton,
+                        clickPosition
+                    )
+                    ) {
+                    audio.playButton();
+
+                    currentScreen =
+                        Screen::MainMenu;
+                }
+            }
+
+            // ==================================================
+            // Name entry buttons
+            // ==================================================
+
+            else if (
+                currentScreen ==
+                Screen::NameEntry
+                ) {
+
+                if (
+                    isButtonClicked(
+                        nameSaveButton,
+                        clickPosition
+                    ) &&
+                    !enteredPlayerName.empty()
+                    ) {
+                    audio.playButton();
+
+                    saveEnteredPlayerName();
+                }
+
+                else if (
+                    isButtonClicked(
+                        nameCancelButton,
+                        clickPosition
+                    )
+                    ) {
+                    audio.playButton();
+
+                    enteredPlayerName =
+                        profile.playerName;
+
+                    nameInputText.setString(
+                        enteredPlayerName
+                    );
+
+                    currentScreen =
+                        nameEntryReturnScreen;
                 }
             }
         }
@@ -4475,6 +2444,7 @@ int main()
             Screen::BattleScreen &&
             animationActive
             ) {
+
             float elapsed =
                 animationClock
                 .getElapsedTime()
@@ -4496,10 +2466,12 @@ int main()
             float attackerTravelProgress =
                 progress <
                 activeImpactProgress
+
                 ? smoothStep(
                     progress /
                     activeImpactProgress
                 )
+
                 : smoothStep(
                     1.0f -
                     (
@@ -4517,7 +2489,8 @@ int main()
                     attackerTravelProgress
                 );
 
-            float targetShake = 0.0f;
+            float targetShake =
+                0.0f;
 
             if (
                 progress >=
@@ -4526,61 +2499,89 @@ int main()
                 targetShake =
                     (
                         static_cast<int>(
-                            elapsed * 55.0f
-                            ) % 2 == 0
+                            elapsed *
+                            55.0f
+                            ) %
+                        2 ==
+                        0
                         )
                     ? -9.0f
                     : 9.0f;
             }
 
+            // ==================================================
+            // Movement category
+            // ==================================================
+
             bool strongLunge =
                 activeVisual ==
                 MoveVisual::ArcPounce ||
+
                 activeVisual ==
                 MoveVisual::Flashstep ||
+
                 activeVisual ==
                 MoveVisual::CinderClaw ||
+
                 activeVisual ==
                 MoveVisual::RiptideRush ||
+
                 activeVisual ==
                 MoveVisual::PhantomDive ||
+
                 activeVisual ==
                 MoveVisual::AlloyCharge ||
+
                 activeVisual ==
                 MoveVisual::HornBreaker ||
+
                 activeVisual ==
                 MoveVisual::SteelJab;
 
             bool mediumLunge =
                 activeVisual ==
                 MoveVisual::TailSweep ||
+
                 activeVisual ==
                 MoveVisual::RazorFin ||
+
                 activeVisual ==
                 MoveVisual::ShadowTalon ||
+
                 activeVisual ==
                 MoveVisual::WyrmClaw;
 
-            float movementDistance = 0.0f;
+            float movementDistance =
+                0.0f;
 
             if (strongLunge) {
-                movementDistance = 160.0f;
+                movementDistance =
+                    160.0f;
             }
+
             else if (mediumLunge) {
-                movementDistance = 85.0f;
+                movementDistance =
+                    85.0f;
             }
+
+            // ==================================================
+            // Burrow Rush
+            // ==================================================
 
             if (
                 activeVisual ==
                 MoveVisual::BurrowRush
                 ) {
-                float sinkAmount = 0.0f;
+
+                float sinkAmount =
+                    0.0f;
 
                 if (progress < 0.25f) {
                     sinkAmount =
                         progress /
                         0.25f;
                 }
+
                 else if (
                     progress >
                     activeImpactProgress
@@ -4596,77 +2597,96 @@ int main()
                             activeImpactProgress
                             );
                 }
+
                 else {
-                    sinkAmount = 1.0f;
+                    sinkAmount =
+                        1.0f;
                 }
 
                 sinkAmount =
-                    clamp01(sinkAmount);
+                    clamp01(
+                        sinkAmount
+                    );
 
                 if (playerIsAttacking) {
+
                     setCreaturePosition(
                         playerSprite,
                         playerBody,
                         playerEye,
                         playerTextureLoaded,
+
                         {
                             playerSpriteDefault.x +
                                 direction *
                                 480.0f *
                                 attackerTravelProgress,
+
                             playerSpriteDefault.y +
                                 120.0f *
                                 sinkAmount
                         },
+
                         {
                             playerBodyDefault.x +
                                 direction *
                                 480.0f *
                                 attackerTravelProgress,
+
                             playerBodyDefault.y +
                                 120.0f *
                                 sinkAmount
                         },
+
                         {
                             playerEyeDefault.x +
                                 direction *
                                 480.0f *
                                 attackerTravelProgress,
+
                             playerEyeDefault.y +
                                 120.0f *
                                 sinkAmount
                         }
                     );
                 }
+
                 else {
+
                     setCreaturePosition(
                         enemySprite,
                         enemyBody,
                         enemyEye,
                         enemyTextureLoaded,
+
                         {
                             enemySpriteDefault.x +
                                 direction *
                                 480.0f *
                                 attackerTravelProgress,
+
                             enemySpriteDefault.y +
                                 120.0f *
                                 sinkAmount
                         },
+
                         {
                             enemyBodyDefault.x +
                                 direction *
                                 480.0f *
                                 attackerTravelProgress,
+
                             enemyBodyDefault.y +
                                 120.0f *
                                 sinkAmount
                         },
+
                         {
                             enemyEyeDefault.x +
                                 direction *
                                 480.0f *
                                 attackerTravelProgress,
+
                             enemyEyeDefault.y +
                                 120.0f *
                                 sinkAmount
@@ -4674,13 +2694,21 @@ int main()
                     );
                 }
             }
+
+            // ==================================================
+            // Normal lunges
+            // ==================================================
+
             else if (
-                movementDistance > 0.0f
+                movementDistance >
+                0.0f
                 ) {
+
                 float verticalAmount =
                     (
                         activeVisual ==
                         MoveVisual::ArcPounce ||
+
                         activeVisual ==
                         MoveVisual::RiptideRush
                         )
@@ -4688,69 +2716,84 @@ int main()
                     : 0.0f;
 
                 if (playerIsAttacking) {
+
                     setCreaturePosition(
                         playerSprite,
                         playerBody,
                         playerEye,
                         playerTextureLoaded,
+
                         {
                             playerSpriteDefault.x +
                                 direction *
                                 movementDistance *
                                 attackerTravelProgress,
+
                             playerSpriteDefault.y +
                                 verticalAmount *
                                 attackerTravelProgress
                         },
+
                         {
                             playerBodyDefault.x +
                                 direction *
                                 movementDistance *
                                 attackerTravelProgress,
+
                             playerBodyDefault.y +
                                 verticalAmount *
                                 attackerTravelProgress
                         },
+
                         {
                             playerEyeDefault.x +
                                 direction *
                                 movementDistance *
                                 attackerTravelProgress,
+
                             playerEyeDefault.y +
                                 verticalAmount *
                                 attackerTravelProgress
                         }
                     );
                 }
+
                 else {
+
                     setCreaturePosition(
                         enemySprite,
                         enemyBody,
                         enemyEye,
                         enemyTextureLoaded,
+
                         {
                             enemySpriteDefault.x +
                                 direction *
                                 movementDistance *
                                 attackerTravelProgress,
+
                             enemySpriteDefault.y +
                                 verticalAmount *
                                 attackerTravelProgress
                         },
+
                         {
                             enemyBodyDefault.x +
                                 direction *
                                 movementDistance *
                                 attackerTravelProgress,
+
                             enemyBodyDefault.y +
                                 verticalAmount *
                                 attackerTravelProgress
                         },
+
                         {
                             enemyEyeDefault.x +
                                 direction *
                                 movementDistance *
                                 attackerTravelProgress,
+
                             enemyEyeDefault.y +
                                 verticalAmount *
                                 attackerTravelProgress
@@ -4759,25 +2802,33 @@ int main()
                 }
             }
 
+            // ==================================================
+            // Phantom fade
+            // ==================================================
+
             if (
                 activeVisual ==
                 MoveVisual::PhantomDive
                 ) {
+
                 int alpha =
                     95 +
                     static_cast<int>(
                         160.0f *
                         std::abs(
-                            progress - 0.5f
+                            progress -
+                            0.5f
                         ) *
                         2.0f
                         );
 
                 if (playerIsAttacking) {
+
                     setCreatureColor(
                         playerSprite,
                         playerBody,
                         playerTextureLoaded,
+
                         withAlpha(
                             sf::Color(
                                 175,
@@ -4788,11 +2839,14 @@ int main()
                         )
                     );
                 }
+
                 else {
+
                     setCreatureColor(
                         enemySprite,
                         enemyBody,
                         enemyTextureLoaded,
+
                         withAlpha(
                             sf::Color(
                                 175,
@@ -4804,6 +2858,10 @@ int main()
                     );
                 }
             }
+
+            // ==================================================
+            // Flashstep fade
+            // ==================================================
 
             if (
                 activeVisual ==
@@ -4811,31 +2869,38 @@ int main()
                 progress <
                 activeImpactProgress
                 ) {
+
                 int alpha =
                     90 +
                     static_cast<int>(
                         pulse(
                             elapsed,
                             28.0f
-                        ) * 90.0f
+                        ) *
+                        90.0f
                         );
 
                 if (playerIsAttacking) {
+
                     setCreatureColor(
                         playerSprite,
                         playerBody,
                         playerTextureLoaded,
+
                         withAlpha(
                             sf::Color::White,
                             alpha
                         )
                     );
                 }
+
                 else {
+
                     setCreatureColor(
                         enemySprite,
                         enemyBody,
                         enemyTextureLoaded,
+
                         withAlpha(
                             sf::Color::White,
                             alpha
@@ -4844,64 +2909,90 @@ int main()
                 }
             }
 
+            // ==================================================
+            // Target shake
+            // ==================================================
+
             bool targetShouldShake =
                 progress >=
                 activeImpactProgress &&
-                activeMove.damage > 0;
+                activeMove.damage >
+                0;
 
             if (targetShouldShake) {
+
                 if (playerIsAttacking) {
+
                     setCreaturePosition(
                         enemySprite,
                         enemyBody,
                         enemyEye,
                         enemyTextureLoaded,
+
                         {
                             enemySpriteDefault.x +
                                 targetShake,
+
                             enemySpriteDefault.y
                         },
+
                         {
                             enemyBodyDefault.x +
                                 targetShake,
+
                             enemyBodyDefault.y
                         },
+
                         {
                             enemyEyeDefault.x +
                                 targetShake,
+
                             enemyEyeDefault.y
                         }
                     );
                 }
+
                 else {
+
                     setCreaturePosition(
                         playerSprite,
                         playerBody,
                         playerEye,
                         playerTextureLoaded,
+
                         {
                             playerSpriteDefault.x +
                                 targetShake,
+
                             playerSpriteDefault.y
                         },
+
                         {
                             playerBodyDefault.x +
                                 targetShake,
+
                             playerBodyDefault.y
                         },
+
                         {
                             playerEyeDefault.x +
                                 targetShake,
+
                             playerEyeDefault.y
                         }
                     );
                 }
             }
 
+            // ==================================================
+            // Impact tint
+            // ==================================================
+
             if (
                 progress >=
                 activeImpactProgress
                 ) {
+
                 sf::Color targetColor =
                     getMoveEffectColor(
                         activeMove.type
@@ -4910,6 +3001,7 @@ int main()
                 if (
                     activeVisual ==
                     MoveVisual::ArcPounce ||
+
                     activeVisual ==
                     MoveVisual::FlameSpit
                     ) {
@@ -4920,6 +3012,7 @@ int main()
                             35
                         );
                 }
+
                 else if (
                     activeMove.type ==
                     Type::Electric
@@ -4931,6 +3024,7 @@ int main()
                             120
                         );
                 }
+
                 else if (
                     activeMove.type ==
                     Type::Water
@@ -4942,11 +3036,10 @@ int main()
                             255
                         );
                 }
+
                 else if (
                     activeMove.type ==
-                    Type::Ghost ||
-                    activeMove.type ==
-                    Type::Dark
+                    Type::Ghost
                     ) {
                     targetColor =
                         sf::Color(
@@ -4957,6 +3050,7 @@ int main()
                 }
 
                 if (playerIsAttacking) {
+
                     setCreatureColor(
                         enemySprite,
                         enemyBody,
@@ -4964,7 +3058,9 @@ int main()
                         targetColor
                     );
                 }
+
                 else {
+
                     setCreatureColor(
                         playerSprite,
                         playerBody,
@@ -4974,15 +3070,16 @@ int main()
                 }
             }
 
-            // ------------------------------------------
-            // Apply actual battle logic at impact
-            // ------------------------------------------
+            // ==================================================
+            // Actual battle impact
+            // ==================================================
 
             if (
                 !impactApplied &&
                 progress >=
                 activeImpactProgress
                 ) {
+
                 Pokemon& target =
                     playerIsAttacking
                     ? battle.getEnemyPokemon()
@@ -4997,28 +3094,15 @@ int main()
                 Status targetStatusBefore =
                     target.getStatus();
 
-                bool attackWasSkipped = false;
-
                 if (playerIsAttacking) {
-                    int skippedTurnsBefore =
-                        battle
-                        .getStats()
-                        .playerTurnsSkipped;
 
                     battle.playerAttack(
                         activePlayerMoveIndex
                     );
-
-                    int skippedTurnsAfter =
-                        battle
-                        .getStats()
-                        .playerTurnsSkipped;
-
-                    attackWasSkipped =
-                        skippedTurnsAfter >
-                        skippedTurnsBefore;
                 }
+
                 else {
+
                     battle.executeEnemyMove(
                         activeMove
                     );
@@ -5030,55 +3114,63 @@ int main()
                 Status targetStatusAfter =
                     target.getStatus();
 
-                if (attackWasSkipped) {
-                    addBattleLog(
-                        battleLog,
-                        battle
-                        .getPlayerPokemon()
-                        .getName() +
-                        " could not attack."
-                    );
+                // Only play the impact sound when damage
+                // actually landed. A missed/non-damaging
+                // attack won't make a fake hit noise.
+                if (
+                    targetHpAfter <
+                    targetHpBefore
+                    ) {
+                    audio.playHit();
                 }
-                else {
-                    addMoveResultToBattleLog(
-                        battleLog,
-                        targetName,
-                        targetHpBefore,
-                        targetHpAfter,
-                        targetStatusBefore,
-                        targetStatusAfter,
-                        activeMove
-                    );
-                }
+
+                addMoveResultToBattleLog(
+                    battleLog,
+                    targetName,
+                    targetHpBefore,
+                    targetHpAfter,
+                    targetStatusBefore,
+                    targetStatusAfter,
+                    activeMove
+                );
 
                 updateBattleLogTexts(
                     battleLog,
                     battleLogTexts
                 );
 
-                impactApplied = true;
+                impactApplied =
+                    true;
 
                 refreshBattleUi();
             }
 
-            // ------------------------------------------
-            // Finish animation
-            // ------------------------------------------
+            // ==================================================
+            // Animation finished
+            // ==================================================
 
             if (
                 elapsed >=
                 activeMoveDuration
                 ) {
+
                 resetCreatureVisualState();
 
-                animationActive = false;
+                animationActive =
+                    false;
 
-                if (battle.isBattleOver()) {
+                if (
+                    battle.isBattleOver()
+                    ) {
                     showBattleResult();
                 }
-                else if (playerIsAttacking) {
+
+                else if (
+                    playerIsAttacking
+                    ) {
                     beginEnemyTurn();
                 }
+
                 else {
                     finishRoundAfterEnemy();
                 }
@@ -5096,50 +3188,162 @@ int main()
                 backgroundSprite
             );
         }
+
         else {
-            window.draw(background);
+            window.draw(
+                background
+            );
         }
+
+        // ==================================================
+        // Name entry
+        // ==================================================
 
         if (
             currentScreen ==
+            Screen::NameEntry
+            ) {
+
+            window.draw(
+                nameEntryTitle
+            );
+
+            window.draw(
+                nameInputBox
+            );
+
+            window.draw(
+                nameInputText
+            );
+
+            window.draw(
+                nameEntryHint
+            );
+
+            window.draw(
+                nameLengthHint
+            );
+
+            window.draw(
+                nameSaveButton
+            );
+
+            window.draw(
+                nameCancelButton
+            );
+
+            window.draw(
+                nameSaveText
+            );
+
+            window.draw(
+                nameCancelText
+            );
+        }
+
+        // ==================================================
+        // Main menu
+        // ==================================================
+
+        else if (
+            currentScreen ==
             Screen::MainMenu
             ) {
-            window.draw(title);
 
-            window.draw(startButton);
-            window.draw(exitButton);
+            window.draw(
+                title
+            );
 
-            window.draw(startText);
-            window.draw(exitText);
+            window.draw(
+                startButton
+            );
+
+            window.draw(
+                profileButton
+            );
+
+            window.draw(
+                exitButton
+            );
+
+            window.draw(
+                startText
+            );
+
+            window.draw(
+                profileButtonText
+            );
+
+            window.draw(
+                exitText
+            );
         }
+
+        // ==================================================
+        // Difficulty
+        // ==================================================
 
         else if (
             currentScreen ==
             Screen::DifficultySelect
             ) {
+
             window.draw(
                 difficultyTitle
             );
 
-            window.draw(easyButton);
-            window.draw(normalButton);
-            window.draw(hardButton);
-            window.draw(backButton);
+            window.draw(
+                easyButton
+            );
 
-            window.draw(easyText);
-            window.draw(normalText);
-            window.draw(hardText);
-            window.draw(backText);
+            window.draw(
+                normalButton
+            );
+
+            window.draw(
+                hardButton
+            );
+
+            window.draw(
+                backButton
+            );
+
+            window.draw(
+                easyText
+            );
+
+            window.draw(
+                normalText
+            );
+
+            window.draw(
+                hardText
+            );
+
+            window.draw(
+                backText
+            );
         }
+
+        // ==================================================
+        // Creature selection
+        // ==================================================
 
         else if (
             currentScreen ==
             Screen::CreatureSelect
             ) {
-            window.draw(selectTitle);
-            window.draw(selectHint);
+
+            window.draw(
+                selectTitle
+            );
+
+            window.draw(
+                selectHint
+            );
 
             for (int i = 0; i < 8; i++) {
+
                 window.draw(
                     creatureButtons[i]
                 );
@@ -5150,123 +3354,274 @@ int main()
             }
         }
 
+        // ==================================================
+        // Battle screen
+        // ==================================================
+
         else if (
             currentScreen ==
             Screen::BattleScreen
             ) {
-            window.draw(ground);
 
+            window.draw(
+                ground
+            );
+
+            // Ground effects first.
             if (
                 animationActive &&
                 (
                     activeVisual ==
                     MoveVisual::Groundbreaker ||
+
                     activeVisual ==
                     MoveVisual::TremorStomp ||
+
                     activeVisual ==
                     MoveVisual::BurrowRush
                     )
                 ) {
+
                 drawMoveEffects(
                     window,
                     activeVisual,
                     activeMove.type,
                     playerIsAttacking,
+
                     animationClock
                     .getElapsedTime()
                     .asSeconds(),
+
                     activeMoveDuration
                 );
             }
 
+            // Player.
             if (playerTextureLoaded) {
-                window.draw(playerSprite);
-            }
-            else {
-                window.draw(playerBody);
-                window.draw(playerEye);
+
+                window.draw(
+                    playerSprite
+                );
             }
 
+            else {
+
+                window.draw(
+                    playerBody
+                );
+
+                window.draw(
+                    playerEye
+                );
+            }
+
+            // Enemy.
             if (enemyTextureLoaded) {
-                window.draw(enemySprite);
-            }
-            else {
-                window.draw(enemyBody);
-                window.draw(enemyEye);
+
+                window.draw(
+                    enemySprite
+                );
             }
 
+            else {
+
+                window.draw(
+                    enemyBody
+                );
+
+                window.draw(
+                    enemyEye
+                );
+            }
+
+            // Foreground attack effects.
             if (
                 animationActive &&
+
                 activeVisual !=
                 MoveVisual::Groundbreaker &&
+
                 activeVisual !=
                 MoveVisual::TremorStomp &&
+
                 activeVisual !=
                 MoveVisual::BurrowRush
                 ) {
+
                 drawMoveEffects(
                     window,
                     activeVisual,
                     activeMove.type,
                     playerIsAttacking,
+
                     animationClock
                     .getElapsedTime()
                     .asSeconds(),
+
                     activeMoveDuration
                 );
             }
 
-            window.draw(playerHpBack);
-            window.draw(playerHpFill);
+            window.draw(
+                playerHpBack
+            );
 
-            window.draw(enemyHpBack);
-            window.draw(enemyHpFill);
+            window.draw(
+                playerHpFill
+            );
+
+            window.draw(
+                enemyHpBack
+            );
+
+            window.draw(
+                enemyHpFill
+            );
 
             for (int i = 0; i < 4; i++) {
-                window.draw(moveButtons[i]);
-                window.draw(moveTexts[i]);
+
+                window.draw(
+                    moveButtons[i]
+                );
+
+                window.draw(
+                    moveTexts[i]
+                );
             }
 
-            window.draw(battleTitle);
+            window.draw(
+                battleTitle
+            );
 
-            window.draw(enemyNameText);
-            window.draw(enemyHpText);
-            window.draw(enemyStatusText);
-            window.draw(enemyStatusIcon);
+            window.draw(
+                enemyNameText
+            );
 
-            window.draw(playerNameText);
-            window.draw(playerHpText);
-            window.draw(playerStatusText);
-            window.draw(playerStatusIcon);
+            window.draw(
+                enemyHpText
+            );
 
-            window.draw(battleLogPanel);
-            window.draw(battleLogTitle);
+            window.draw(
+                enemyStatusText
+            );
+
+            window.draw(
+                enemyStatusIcon
+            );
+
+            window.draw(
+                playerNameText
+            );
+
+            window.draw(
+                playerHpText
+            );
+
+            window.draw(
+                playerStatusText
+            );
+
+            window.draw(
+                playerStatusIcon
+            );
+
+            window.draw(
+                battleLogPanel
+            );
+
+            window.draw(
+                battleLogTitle
+            );
 
             for (
                 std::size_t i = 0;
                 i < battleLogTexts.size();
                 i++
                 ) {
+
                 window.draw(
                     battleLogTexts[i]
                 );
             }
 
-            window.draw(battleMessage);
+            window.draw(
+                battleMessage
+            );
         }
+
+        // ==================================================
+        // Result
+        // ==================================================
 
         else if (
             currentScreen ==
             Screen::ResultScreen
             ) {
-            window.draw(resultTitle);
-            window.draw(resultMessage);
 
-            window.draw(playAgainButton);
-            window.draw(resultMenuButton);
+            window.draw(
+                resultTitle
+            );
 
-            window.draw(playAgainText);
-            window.draw(resultMenuText);
+            window.draw(
+                resultMessage
+            );
+
+            window.draw(
+                playAgainButton
+            );
+
+            window.draw(
+                resultMenuButton
+            );
+
+            window.draw(
+                playAgainText
+            );
+
+            window.draw(
+                resultMenuText
+            );
+        }
+
+        // ==================================================
+        // Profile
+        // ==================================================
+
+        else if (
+            currentScreen ==
+            Screen::ProfileScreen
+            ) {
+
+            window.draw(
+                profileTitle
+            );
+
+            for (
+                std::size_t i = 0;
+                i < profileTexts.size();
+                i++
+                ) {
+
+                window.draw(
+                    profileTexts[i]
+                );
+            }
+
+            window.draw(
+                profileChangeNameButton
+            );
+
+            window.draw(
+                profileBackButton
+            );
+
+            window.draw(
+                profileChangeNameText
+            );
+
+            window.draw(
+                profileBackText
+            );
         }
 
         window.display();

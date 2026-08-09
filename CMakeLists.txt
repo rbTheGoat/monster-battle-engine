@@ -18,6 +18,10 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(SFML)
 
+# ==================================================
+# Console version
+# ==================================================
+
 add_executable(BattleTurnSimulatorConsole
     main.cpp
     pokemon.cpp
@@ -26,19 +30,39 @@ add_executable(BattleTurnSimulatorConsole
     battle.cpp
 )
 
+# ==================================================
+# SFML version
+# ==================================================
+
 add_executable(BattleTurnSimulatorSFML
     sfmlMain.cpp
+
     pokemon.cpp
     pokemonDatabase.cpp
-    saveSystem.cpp
     battle.cpp
+    saveSystem.cpp
+
+    sfmlHelpers.cpp
+    battleLog.cpp
+    creatureVisuals.cpp
+    moveAnimations.cpp
+    profileScreen.cpp
+    audioManager.cpp
+    uiTheme.cpp
 )
 
-target_link_libraries(BattleTurnSimulatorSFML PRIVATE
+target_link_libraries(
+    BattleTurnSimulatorSFML
+    PRIVATE
+
     SFML::Graphics
+    SFML::Audio
 )
 
-# Copy fonts, images, and other assets beside the SFML executable
+# ==================================================
+# Copy assets beside executable
+# ==================================================
+
 add_custom_command(
     TARGET BattleTurnSimulatorSFML
     POST_BUILD
